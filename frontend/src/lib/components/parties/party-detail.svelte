@@ -141,5 +141,6 @@
 
 	<PartyFormDialog bind:open={editOpen} {type} party={p} onSaved={() => client.invalidateQueries({ queryKey: ['party', id] })} />
 {:else if party.isError}
-	<p class="text-destructive">{party.error.message}</p>
+	<h1 class="text-xl font-semibold">Not available</h1>
+	<p class="mt-1 text-destructive">{party.error.message}</p>
 {/if}

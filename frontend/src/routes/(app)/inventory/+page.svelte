@@ -58,7 +58,7 @@
 				<TableState loading={list.loading} error={list.error} empty={!list.items.length} colspan={11} />
 				{#each list.items as r (r.id)}
 					<tr>
-						<td class="font-mono text-xs">{r.sku_code}</td>
+						<td class="whitespace-nowrap font-mono text-xs">{r.sku_code}</td>
 						<td><a class="font-medium text-primary hover:underline" href="/products/{r.id}">{r.name}</a></td>
 						<td>{r.unit}</td>
 						<td class="num">{qty(r.total_purchased)}</td>

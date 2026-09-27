@@ -25,7 +25,7 @@
 				<tbody>
 					{#each allPerms as perm (perm)}
 						<tr>
-							<td class="font-mono text-xs">{perm}</td>
+							<td class="whitespace-nowrap font-mono text-xs">{perm}</td>
 							{#each q.data as r (r.role)}
 								<td class="text-center">{#if r.permissions.includes(perm)}<Check class="mx-auto size-4 text-emerald-600" aria-label="allowed" />{:else}<span class="text-muted-foreground" aria-label="denied">—</span>{/if}</td>
 							{/each}

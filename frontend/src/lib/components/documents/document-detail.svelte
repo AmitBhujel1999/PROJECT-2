@@ -86,7 +86,7 @@
 		</p>
 	{/if}
 
-	<div class="grid gap-4 xl:grid-cols-[1fr_22rem]">
+	<div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_22rem] [&>*]:min-w-0">
 		<Card bodyClass="p-0">
 			<div class="grid gap-4 border-b p-4 sm:grid-cols-3">
 				<div>
@@ -167,5 +167,6 @@
 	<ConfirmDialog bind:open={cancelOpen} title="Cancel {number}?" requireReason reasonLabel="Cancellation reason" destructive confirmLabel="Cancel document"
 		message="The document is kept for audit, stock is reversed with new ledger entries and any payments applied become unallocated advances." onConfirm={cancel} />
 {:else if q.isError}
-	<p class="text-destructive">{q.error.message}</p>
+	<h1 class="text-xl font-semibold">Not available</h1>
+	<p class="mt-1 text-destructive">{q.error.message}</p>
 {/if}

@@ -74,5 +74,6 @@
 
 	<ProductFormDialog bind:open={editOpen} product={p} onSaved={() => client.invalidateQueries({ queryKey: ['product', id] })} />
 {:else if product.isError}
-	<p class="text-destructive">{product.error.message}</p>
+	<h1 class="text-xl font-semibold">Not available</h1>
+	<p class="mt-1 text-destructive">{product.error.message}</p>
 {/if}

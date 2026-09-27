@@ -46,7 +46,7 @@
 						<td class="whitespace-nowrap text-xs">{dateTime(e.timestamp)}</td>
 						<td>{e.username || '—'}</td>
 						<td><Badge variant={e.action === 'LOGIN_FAILED' ? 'danger' : e.action === 'CANCEL' ? 'warning' : 'default'}>{e.action}</Badge></td>
-						<td class="font-mono text-xs">{e.model_name}</td>
+						<td class="whitespace-nowrap font-mono text-xs">{e.model_name}</td>
 						<td>{e.object_repr} <span class="text-xs text-muted-foreground">#{e.object_id}</span></td>
 						<td class="text-xs">{e.ip_address ?? ''}</td>
 						<td>{#if e.before_data || e.after_data}<button class="text-xs text-primary underline" onclick={() => ((selected = e), (open = true))}>Details</button>{/if}</td>

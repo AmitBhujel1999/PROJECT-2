@@ -147,7 +147,7 @@
 		<StatCard label="Total Vendors" value={String(c.total_vendors)} icon={Building2} href="/vendors" />
 	</div>
 
-	<div class="mt-4 grid gap-4 xl:grid-cols-2">
+	<div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2 [&>*]:min-w-0">
 		<Card title="Sales vs purchase trend" description={d.granularity === 'month' ? 'Monthly totals incl. VAT' : 'Daily totals incl. VAT'}>
 			<Chart config={trendConfig} label="Line chart of sales and purchases over the selected period" />
 		</Card>
@@ -164,7 +164,7 @@
 		</Card>
 	</div>
 
-	<div class="mt-4 grid gap-4 xl:grid-cols-2">
+	<div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2 [&>*]:min-w-0">
 		<Card title="Low stock alerts" bodyClass="p-0">
 			<div class="overflow-x-auto">
 				<table class="table-base">

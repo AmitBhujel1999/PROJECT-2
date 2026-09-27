@@ -136,5 +136,6 @@
 	<ConfirmDialog bind:open={cancelOpen} title="Cancel {r.number}?" requireReason destructive confirmLabel="Cancel {side.label.toLowerCase()}"
 		message="Allocations will be voided and the {side.docLabel.toLowerCase()}s become outstanding again. The record is kept for audit." onConfirm={cancel} />
 {:else if q.isError}
-	<p class="text-destructive">{q.error.message}</p>
+	<h1 class="text-xl font-semibold">Not available</h1>
+	<p class="mt-1 text-destructive">{q.error.message}</p>
 {/if}

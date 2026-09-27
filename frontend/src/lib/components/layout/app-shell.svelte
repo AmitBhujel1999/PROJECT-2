@@ -110,7 +110,7 @@
 		</div>
 	{/if}
 
-	<div class={cn('flex min-h-screen flex-col transition-[padding]', collapsed ? 'md:pl-16' : 'md:pl-16 lg:pl-64')}>
+	<div class={cn('flex min-h-screen min-w-0 flex-col transition-[padding]', collapsed ? 'md:pl-16' : 'md:pl-16 lg:pl-64')}>
 		<header class="no-print sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/95 px-3 backdrop-blur sm:px-4">
 			<button class="rounded-md p-2 hover:bg-muted md:hidden" onclick={() => (mobileOpen = true)} aria-label="Open navigation" data-testid="mobile-menu">
 				<Menu class="size-5" />

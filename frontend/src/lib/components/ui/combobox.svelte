@@ -43,7 +43,16 @@
 	let active = $state(0);
 	let loading = $state(false);
 	let input: HTMLInputElement | null = $state(null);
+	let pos = $state({ top: 0, left: 0, width: 0 });
 	let requestId = 0;
+
+	// The list is position:fixed so it is never clipped by scrollable tables.
+	function place() {
+		if (!input) return;
+		const r = input.getBoundingClientRect();
+		const width = Math.max(r.width, Math.min(256, window.innerWidth - 16));
+		pos = { top: r.bottom + 4, left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)), width };
+	}
 
 	async function search(q: string) {
 		const rid = ++requestId;
@@ -62,6 +71,7 @@
 
 	function openList() {
 		if (disabled) return;
+		place();
 		open = true;
 		search(query);
 	}
@@ -106,6 +116,9 @@
 	});
 </script>
 
+<svelte:window onresize={() => open && place()} />
+<svelte:document onscrollcapture={() => open && place()} />
+
 <div class={cn('relative', className)}>
 	<div class="relative">
 		<input
@@ -124,6 +137,7 @@
 			value={open ? query : label}
 			oninput={(e) => {
 				query = e.currentTarget.value;
+				place();
 				open = true;
 				debounced(query);
 			}}
@@ -149,7 +163,8 @@
 		<ul
 			id="{id}-listbox"
 			role="listbox"
-			class="absolute z-40 mt-1 max-h-72 w-full min-w-64 overflow-auto rounded-md border bg-popover bg-background p-1 text-sm shadow-lg"
+			style="top: {pos.top}px; left: {pos.left}px; width: {pos.width}px"
+			class="fixed z-40 max-h-72 overflow-auto rounded-md border bg-background p-1 text-sm shadow-lg"
 		>
 			{#each results as item, i (item.id)}
 				<li

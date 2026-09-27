@@ -224,8 +224,8 @@
 	back={{ href: `/${apiPath}`, label: isSale ? 'Sales' : 'Purchases' }}
 />
 
-<div class="grid gap-4 xl:grid-cols-[1fr_22rem]">
-	<div class="grid gap-4">
+<div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_22rem] [&>*]:min-w-0">
+	<div class="grid gap-4 [&>*]:min-w-0">
 		<Card>
 			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				<Field label={isSale ? 'Customer' : 'Vendor'} for="party" required error={errors.party} class="sm:col-span-2">
@@ -263,7 +263,7 @@
 							<th class="num w-24">Value</th>
 							<th class="num">Tax %</th>
 							<th class="num">Amount</th>
-							<th class="w-10"><span class="sr-only">Remove</span></th>
+							<th class="w-10" aria-label="Remove"></th>
 						</tr>
 					</thead>
 					<tbody>

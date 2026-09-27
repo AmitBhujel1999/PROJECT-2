@@ -65,7 +65,7 @@
 				<TableState loading={list.loading} error={list.error} empty={!list.items.length} colspan={9} onRetry={() => list.load()} />
 				{#each list.items as p (p.id)}
 					<tr>
-						<td class="font-mono text-xs">{p.sku_code}</td>
+						<td class="whitespace-nowrap font-mono text-xs">{p.sku_code}</td>
 						<td><a href="/products/{p.id}" class="font-medium text-primary hover:underline">{p.name}</a></td>
 						<td>{p.unit_display}</td>
 						<td class="num" class:text-red-600={Number(p.current_stock) <= Number(p.reorder_level)}>{qty(p.current_stock)}</td>
