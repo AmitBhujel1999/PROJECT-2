@@ -4,6 +4,8 @@ from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 
 from apps.common.documents import serialize_totals
+from apps.reports.documents_pdf import trade_document_pdf
+from apps.reports.exporters import pdf_response
 from apps.common.responses import created, ok
 from apps.users.permissions import RolePermission
 
@@ -28,6 +30,7 @@ class SaleViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Creat
         "read": "sales.view",
         "create": "sales.create",
         "calculate": "sales.create",
+        "pdf": "sales.view",
         "cancel": "sales.cancel",
     }
     filterset_class = SaleFilter
@@ -69,3 +72,11 @@ class SaleViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Creat
         sale = services.cancel_sale(self.get_object(), reason=serializer.validated_data["reason"], user=request.user)
         sale = self.get_queryset().get(pk=sale.pk)
         return ok(SaleDetailSerializer(sale).data, f"Sale {sale.invoice_number} cancelled.")
+
+    @action(detail=True, methods=["get"])
+    def pdf(self, request, pk=None):
+        """Printable PDF (``?inline=1`` opens in the browser for printing)."""
+        doc = self.get_object()
+        return pdf_response(
+            trade_document_pdf(doc, kind="sale"), f"{doc.invoice_number}.pdf", inline=request.query_params.get("inline") == "1"
+        )

@@ -123,6 +123,7 @@ class BasePaymentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixin
             "auto_allocate": self.create_perm,
             "unallocate": self.create_perm,
             "cancel": self.cancel_perm,
+            "pdf": self.view_perm,
         }
 
     def get_queryset(self):
@@ -217,6 +218,17 @@ class BasePaymentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixin
         payment = engine.cancel_payment(self.cfg, payment, reason=s.validated_data["reason"], user=request.user)
         return ok(payment_payload(self.cfg, payment, detail=True), f"{self.cfg.pay_no(payment)} cancelled.")
 
+    @action(detail=True, methods=["get"])
+    def pdf(self, request, pk=None):
+        from apps.reports.documents_pdf import payment_pdf
+        from apps.reports.exporters import pdf_response
+
+        payment = get_object_or_404(self.cfg.payment_model.objects.select_related(self.cfg.pay_party), pk=pk)
+        kind = "receipt" if self.cfg.key == "receivable" else "payment"
+        return pdf_response(
+            payment_pdf(payment, kind=kind), f"{self.cfg.pay_no(payment)}.pdf", inline=request.query_params.get("inline") == "1"
+        )
+
     @action(detail=False, methods=["get"], url_path="open-documents")
     def open_documents(self, request):
         """Open invoices/bills of a party, oldest due first (for allocation UI)."""
@@ -268,12 +280,48 @@ def party_header(party) -> dict:
     }
 
 
+LEDGER_COLUMNS = [
+    ("date", "Date", False),
+    ("reference", "Reference", False),
+    ("transaction_type", "Type", False),
+    ("description", "Description", False),
+    ("debit", "Debit", True),
+    ("credit", "Credit", True),
+    ("balance", "Balance", True),
+    ("due_date", "Due Date", False),
+    ("payment_status", "Payment Status", False),
+]
+
+
+def ledger_export(request, party, data, *, title: str, base_name: str):
+    from apps.reports.exporters import Column, export_response
+
+    columns = [Column(k, label, numeric=n, width=2.2 if k == "description" else None) for k, label, n in LEDGER_COLUMNS]
+    opening = {"description": "Opening Balance", "balance": data["opening_balance"], "date": data["start_date"] or ""}
+    rows = [opening, *data["entries"]]
+    totals = {"description": "Closing Balance", "debit": data["total_debit"], "credit": data["total_credit"], "balance": data["closing_balance"]}
+    meta = [(party.get_type_display(), party.name)]
+    if party.pan_vat_no:
+        meta.append(("PAN/VAT", party.pan_vat_no))
+    meta.append(("Period", f"{data['start_date'] or 'Beginning'} to {data['end_date']}"))
+    return export_response(
+        request, base_name=f"{base_name}-{party.pk}", title=title, columns=columns, rows=rows, meta=meta, totals=totals,
+        summary=[("Opening Balance", f"{data['opening_balance']:,.2f}"), ("Total Debit", f"{data['total_debit']:,.2f}"),
+                 ("Total Credit", f"{data['total_credit']:,.2f}"), ("Closing Balance", f"{data['closing_balance']:,.2f}")],
+    )
+
+
 class PartyLedgerView(PartyAccountView):
     def get(self, request, pk):
         party = self.party(pk)
         data = engine.ledger(
             self.cfg, party.pk, start=parse_date_param(request, "start_date"), end=parse_date_param(request, "end_date")
         )
+        if request.query_params.get("export"):
+            label = "Customer Ledger" if self.cfg.key == "receivable" else "Vendor Ledger"
+            response = ledger_export(request, party, data, title=label, base_name=label.lower().replace(" ", "-"))
+            if response:
+                return response
         entries = data.pop("entries")
         return paginate_list(request, entries, view=self, extra={"party": party_header(party), **data})
 
@@ -285,6 +333,11 @@ class PartyStatementView(PartyAccountView):
         end = parse_date_param(request, "end_date", today)
         start = parse_date_param(request, "start_date", end.replace(day=1))
         data = engine.ledger(self.cfg, party.pk, start=start, end=end)
+        if request.query_params.get("export"):
+            label = "Customer Statement" if self.cfg.key == "receivable" else "Vendor Statement"
+            response = ledger_export(request, party, data, title=f"{label} - {party.name}", base_name=label.lower().replace(" ", "-"))
+            if response:
+                return response
         return ok({"party": party_header(party), **data})
 
 

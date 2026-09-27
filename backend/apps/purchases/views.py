@@ -4,6 +4,8 @@ from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 
 from apps.common.documents import serialize_totals
+from apps.reports.documents_pdf import trade_document_pdf
+from apps.reports.exporters import pdf_response
 from apps.common.responses import created, ok
 from apps.users.permissions import RolePermission
 
@@ -28,6 +30,7 @@ class PurchaseViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.C
         "read": "purchases.view",
         "create": "purchases.create",
         "calculate": "purchases.create",
+        "pdf": "purchases.view",
         "cancel": "purchases.cancel",
     }
     filterset_class = PurchaseFilter
@@ -68,3 +71,11 @@ class PurchaseViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.C
         purchase = services.cancel_purchase(self.get_object(), reason=serializer.validated_data["reason"], user=request.user)
         purchase = self.get_queryset().get(pk=purchase.pk)
         return ok(PurchaseDetailSerializer(purchase).data, f"Purchase {purchase.bill_number} cancelled.")
+
+    @action(detail=True, methods=["get"])
+    def pdf(self, request, pk=None):
+        """Printable PDF (``?inline=1`` opens in the browser for printing)."""
+        doc = self.get_object()
+        return pdf_response(
+            trade_document_pdf(doc, kind="purchase"), f"{doc.bill_number}.pdf", inline=request.query_params.get("inline") == "1"
+        )
