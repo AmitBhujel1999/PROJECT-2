@@ -207,6 +207,7 @@ SESSION_COOKIE_NAME = "acct_sessionid"
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_NAME = "acct_csrftoken"
+CSRF_FAILURE_VIEW = "apps.common.views.csrf_failure"
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "http://localhost,http://127.0.0.1,http://localhost:5173")
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -254,5 +255,8 @@ LOGGING = {
     "formatters": {"simple": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"}},
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "simple"}},
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
-    "loggers": {"django.db.backends": {"level": "WARNING"}},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.db.backends": {"level": "WARNING"},
+    },
 }
