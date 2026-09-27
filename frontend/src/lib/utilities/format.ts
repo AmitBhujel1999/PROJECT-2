@@ -119,3 +119,19 @@ export const ADJUSTMENT_REASONS = [
 	{ value: 'RETURN', label: 'Returned goods' },
 	{ value: 'OTHER', label: 'Other' }
 ];
+
+/** Exact decimal-string -> integer cents (for display-only sums, no floats). */
+export function toCents(value: string | null | undefined): bigint {
+	if (!value) return 0n;
+	const str = String(value).trim();
+	const neg = str.startsWith('-');
+	const [i, f = ''] = str.replace('-', '').split('.');
+	const cents = BigInt(i || '0') * 100n + BigInt((f + '00').slice(0, 2));
+	return neg ? -cents : cents;
+}
+
+export function fromCents(cents: bigint): string {
+	const neg = cents < 0n;
+	const abs = neg ? -cents : cents;
+	return `${neg ? '-' : ''}${abs / 100n}.${String(abs % 100n).padStart(2, '0')}`;
+}

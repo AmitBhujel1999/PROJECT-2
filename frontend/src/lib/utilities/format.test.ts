@@ -32,3 +32,12 @@ describe('qty', () => {
 		expect(qty('2.500')).toBe('2.5');
 	});
 });
+
+import { fromCents, toCents } from './format';
+describe('cents', () => {
+	it('round-trips decimal strings exactly', () => {
+		expect(toCents('10170.5')).toBe(1017050n);
+		expect(fromCents(toCents('0.1') + toCents('0.2'))).toBe('0.30');
+		expect(fromCents(toCents('-5.05'))).toBe('-5.05');
+	});
+});
