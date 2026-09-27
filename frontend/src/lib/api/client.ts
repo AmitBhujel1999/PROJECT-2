@@ -119,7 +119,9 @@ export function exportUrl(path: string, query: Query, kind: 'csv' | 'pdf', inlin
 
 /** Map DRF field errors ({field: [msg]}) to {field: msg}. */
 export function fieldErrors(err: unknown): Record<string, string> {
-	if (!(err instanceof ApiError) || !err.details || typeof err.details !== 'object') return {};
+	// Only validation errors carry per-field messages; other codes (e.g.
+	// INSUFFICIENT_STOCK) put structured data in details, not field errors.
+	if (!(err instanceof ApiError) || err.code !== 'VALIDATION_ERROR' || !err.details || typeof err.details !== 'object') return {};
 	const out: Record<string, string> = {};
 	for (const [key, value] of Object.entries(err.details as Record<string, unknown>)) {
 		out[key] = Array.isArray(value) ? String(value[0]) : typeof value === 'string' ? value : JSON.stringify(value);

@@ -41,3 +41,11 @@ describe('cents', () => {
 		expect(fromCents(toCents('-5.05'))).toBe('-5.05');
 	});
 });
+
+import { ApiError, fieldErrors } from '$lib/api/client';
+describe('fieldErrors', () => {
+	it('maps only validation errors to fields', () => {
+		expect(fieldErrors(new ApiError(400, 'VALIDATION_ERROR', 'x', { date: ['Bad date'] }))).toEqual({ date: 'Bad date' });
+		expect(fieldErrors(new ApiError(409, 'INSUFFICIENT_STOCK', 'x', { date: '2026-09-27', available: '3' }))).toEqual({});
+	});
+});

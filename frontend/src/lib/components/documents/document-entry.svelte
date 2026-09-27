@@ -251,7 +251,7 @@
 		<Card title="Items" bodyClass="p-0">
 			{#snippet actions()}{#if previewing}<Spinner class="text-muted-foreground" />{/if}{/snippet}
 			<div class="overflow-x-auto">
-				<table class="table-base min-w-[860px]" data-testid="entry-items">
+				<table class="table-base min-w-[980px]" data-testid="entry-items">
 					<thead>
 						<tr>
 							<th class="w-8">#</th>
@@ -288,15 +288,15 @@
 									{#if row.product}{fmtQty(stock)} <span class="text-xs text-muted-foreground">{row.unit}</span>{/if}
 								</td>
 								<td>
-									<Input type="number" min="0.001" step="any" bind:value={row.quantity} oninput={schedulePreview} class="h-8 text-right" aria-label="Quantity row {i + 1}" aria-invalid={!!short} />
+									<Input type="number" min="0.001" step="any" bind:value={row.quantity} oninput={schedulePreview} class="h-8 w-24 text-right" aria-label="Quantity row {i + 1}" aria-invalid={!!short} />
 								</td>
-								<td><Input type="number" min="0" step="0.01" bind:value={row.unit_price} oninput={schedulePreview} class="h-8 text-right" aria-label="Price row {i + 1}" /></td>
+								<td><Input type="number" min="0" step="0.01" bind:value={row.unit_price} oninput={schedulePreview} class="h-8 w-32 text-right" aria-label="Price row {i + 1}" /></td>
 								<td>
-									<select class="h-8 w-full rounded-md border bg-background px-1.5 text-sm" bind:value={row.discount_type} onchange={schedulePreview} aria-label="Discount type row {i + 1}">
+									<select class="h-8 w-24 rounded-md border bg-background px-1.5 text-sm" bind:value={row.discount_type} onchange={schedulePreview} aria-label="Discount type row {i + 1}">
 										<option value="">None</option><option value="PERCENTAGE">%</option><option value="FIXED">Fixed</option>
 									</select>
 								</td>
-								<td><Input type="number" min="0" step="0.01" bind:value={row.discount_value} oninput={schedulePreview} disabled={!row.discount_type} class="h-8 text-right" aria-label="Discount value row {i + 1}" /></td>
+								<td><Input type="number" min="0" step="0.01" bind:value={row.discount_value} oninput={schedulePreview} disabled={!row.discount_type} class="h-8 w-24 text-right" aria-label="Discount value row {i + 1}" /></td>
 								<td class="num text-muted-foreground">{ln?.tax_rate ?? ''}</td>
 								<td class="num font-medium">
 									{#if ln}
