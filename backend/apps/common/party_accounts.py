@@ -326,7 +326,9 @@ def cancel_payment(cfg: AccountConfig, payment, *, reason: str, user):
 
 def pay_on_creation(cfg: AccountConfig, doc, *, payment: dict, user):
     """Record a payment made together with the invoice/bill and allocate it."""
-    amount = money(payment["amount"])
+    amount = doc.total_amount if payment.get("pay_in_full") else money(payment["amount"])
+    if amount <= 0:
+        return None
     if amount > doc.total_amount:
         raise BusinessError(
             f"Amount paid ({amount}) cannot exceed the document total ({doc.total_amount}).", code="INVALID_AMOUNT"

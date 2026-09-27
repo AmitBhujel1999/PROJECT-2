@@ -264,3 +264,26 @@ def test_sale_list_filters(api, customer, customer2, product_factory, make_sale)
     assert api.get(f"/api/sales/?customer={customer.pk}").json()["data"]["count"] == 1
     assert api.get("/api/sales/?search=XYZ").json()["data"]["count"] == 1
     assert api.get("/api/sales/?invoice_number=000002").json()["data"]["count"] == 1
+
+
+def test_pay_in_full_uses_server_total(api, customer, product_factory):
+    p = product_factory(price=100)
+    body = {"party": customer.pk, "date": "2026-09-27", "items": [line(p, 3)], "payment": {"pay_in_full": True, "payment_method": "CASH"}}
+    d = api.post("/api/sales/", body, format="json").json()["data"]
+    assert (d["payment_status"], d["amount_paid"], d["total_amount"]) == ("PAID", "339.00", "339.00")
+    body["payment"] = {"payment_method": "CASH"}
+    assert api.post("/api/sales/", body, format="json").status_code == 400
+
+
+def test_preview_without_party(api, product_factory):
+    p = product_factory(price=100)
+    r = api.post("/api/sales/calculate/", {"date": "2026-09-27", "items": [line(p, 1)]}, format="json")
+    assert r.status_code == 200 and r.json()["data"]["total_amount"] == "113.00"
+
+
+def test_inline_pdf_can_be_framed_same_origin(api, customer, product_factory, make_sale):
+    sale = make_sale(customer, [item(product_factory(), 1)])
+    r = api.get(f"/api/sales/{sale.pk}/pdf/?inline=1")
+    assert r["X-Frame-Options"] == "SAMEORIGIN"
+    assert "frame-ancestors 'self'" in r["Content-Security-Policy"]
+    assert api.get(f"/api/sales/{sale.pk}/pdf/")["X-Frame-Options"] == "DENY"

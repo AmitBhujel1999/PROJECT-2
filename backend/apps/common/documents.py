@@ -124,9 +124,21 @@ class LineInputSerializer(serializers.Serializer):
 
 
 class PaymentInputSerializer(serializers.Serializer):
-    amount = serializers.DecimalField(max_digits=16, decimal_places=2, min_value=Decimal("0.01"))
+    """Payment recorded together with a sale/purchase.
+
+    ``pay_in_full`` lets the server use its own calculated total, so the
+    browser never has to supply the amount for a fully paid document.
+    """
+
+    pay_in_full = serializers.BooleanField(required=False, default=False)
+    amount = serializers.DecimalField(max_digits=16, decimal_places=2, min_value=Decimal("0.01"), required=False, allow_null=True)
     payment_method = serializers.ChoiceField(choices=PaymentMethod.choices, required=False, default=PaymentMethod.CASH)
     reference_number = serializers.CharField(max_length=60, required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        if not attrs.get("pay_in_full") and not attrs.get("amount"):
+            raise serializers.ValidationError({"amount": "Enter the amount paid."})
+        return attrs
 
 
 class DocumentInputSerializer(serializers.Serializer):
@@ -138,6 +150,12 @@ class DocumentInputSerializer(serializers.Serializer):
     notes = serializers.CharField(required=False, allow_blank=True, default="", max_length=2000)
     items = LineInputSerializer(many=True)
     payment = PaymentInputSerializer(required=False, allow_null=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.context.get("preview"):
+            # Totals can be previewed before a party is chosen.
+            self.fields["party"].required = False
 
     def validate_items(self, value):
         if not value:

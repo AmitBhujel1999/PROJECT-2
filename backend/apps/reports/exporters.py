@@ -200,6 +200,10 @@ def pdf_response(pdf: bytes, filename: str, *, inline=False) -> HttpResponse:
     response = HttpResponse(pdf, content_type="application/pdf")
     disposition = "inline" if inline else "attachment"
     response["Content-Disposition"] = f'{disposition}; filename="{filename}"'
+    if inline:
+        # Allow the SPA (same origin) to embed the PDF in an iframe for printing.
+        response["X-Frame-Options"] = "SAMEORIGIN"
+        response["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'"
     return response
 
 

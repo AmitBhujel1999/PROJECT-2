@@ -59,7 +59,7 @@ class PurchaseViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.C
     @action(detail=False, methods=["post"])
     def calculate(self, request):
         """Server-side preview of totals for the entry form (nothing is saved)."""
-        serializer = PurchaseInputSerializer(data=request.data)
+        serializer = PurchaseInputSerializer(data=request.data, context={"preview": True})
         serializer.is_valid(raise_exception=True)
         totals = services.calculate_purchase_totals(serializer.validated_data)
         return ok(serialize_totals(totals))

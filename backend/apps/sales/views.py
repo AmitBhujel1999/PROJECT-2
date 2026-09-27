@@ -60,7 +60,7 @@ class SaleViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Creat
     @action(detail=False, methods=["post"])
     def calculate(self, request):
         """Server-side preview of totals and available stock (nothing is saved)."""
-        serializer = SaleInputSerializer(data=request.data)
+        serializer = SaleInputSerializer(data=request.data, context={"preview": True})
         serializer.is_valid(raise_exception=True)
         totals, stock = services.calculate_sale_totals(serializer.validated_data)
         return ok(serialize_totals(totals, stock))
