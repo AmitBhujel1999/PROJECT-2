@@ -12,6 +12,7 @@ dependencies = [
     "gunicorn>=26.2.0",
     "psycopg[binary]>=3.3.6",
     "reportlab>=5.0.1",
+    "waitress>=3.0.2",
     "whitenoise>=6.12.0",
 ]
 

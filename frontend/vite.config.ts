@@ -16,10 +16,14 @@ export default defineConfig({
 			'/static': { target: API_TARGET, changeOrigin: false }
 		}
 	},
+	// `bun run preview` serves the production build; used by start-windows.ps1
+	// (no Docker/nginx), so it forwards the same paths nginx would.
 	preview: {
 		port: 4173,
 		proxy: {
-			'/api': { target: API_TARGET, changeOrigin: false }
+			'/api': { target: API_TARGET, changeOrigin: false },
+			'/admin': { target: API_TARGET, changeOrigin: false },
+			'/static': { target: API_TARGET, changeOrigin: false }
 		}
 	},
 	test: {

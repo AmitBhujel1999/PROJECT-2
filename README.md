@@ -29,6 +29,20 @@ re-calculated on every save. The browser never supplies authoritative numbers.
 It creates `.env` with random secrets (and demo data), starts everything, waits
 until it is ready and prints the URL, username and password.
 
+**Windows without Docker** (e.g. "virtualization support not detected"): from this folder run
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-windows.ps1
+```
+
+It installs PostgreSQL 16, uv and Bun with `winget` if missing, creates the
+database and a random admin password, loads demo data, builds the frontend and
+serves the app at **http://localhost:4173** (Django via waitress on port 8000,
+SvelteKit preview server in front). Stop it with `.\stop-windows.ps1`; later
+runs of `start-windows.ps1` just start it again. Logs and the generated admin
+password are in the `.local` folder. If you already had PostgreSQL installed,
+the script asks for its `postgres` password once.
+
 **Manual:**
 
 ```bash
