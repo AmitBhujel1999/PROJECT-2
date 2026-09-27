@@ -24,7 +24,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def zero_tax_product(product_factory):
     # Tax 0% and price 1 so invoice totals equal quantities (easy arithmetic).
-    return product_factory("Unit Item", stock=1_000_000, price=1, cost=1, tax=0)
+    return product_factory("Unit Item", stock=1_000_000, price=1, cost=1, tax=0, opening_date=dt.date(2024, 1, 1))
 
 
 def invoice(make_sale, customer, product, amount, date, due=None):

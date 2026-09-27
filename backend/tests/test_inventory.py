@@ -127,3 +127,29 @@ def test_stock_register_as_of(api, customer, product_factory, make_sale):
     assert row["current_stock"] == "10.000"
     row = api.get("/api/inventory/?as_of=2026-06-01").json()["data"]["results"][0]
     assert row["current_stock"] == "6.000"
+
+
+def test_backdated_sale_cannot_make_history_negative(api, customer, vendor, product_factory, make_purchase):
+    """10 units received on 1 Mar; a sale dated 1 Feb must not consume them."""
+    p = product_factory(stock=0)
+    make_purchase(vendor, [item(p, 10, 100)], date=dt.date(2026, 3, 1))
+    body = {"party": customer.pk, "date": "2026-02-01", "items": [{"product": p.pk, "quantity": "1"}]}
+    r = api.post("/api/sales/", body, format="json")
+    assert r.status_code == 409
+    assert r.json()["error"]["details"]["available"] == "0.000"
+    body["date"] = "2026-03-01"
+    assert api.post("/api/sales/", body, format="json").status_code == 201
+
+
+def test_backdated_sale_respects_later_sales(customer, vendor, product_factory, make_purchase, make_sale):
+    from apps.common.exceptions import InsufficientStockError
+
+    p = product_factory(stock=0)
+    make_purchase(vendor, [item(p, 10, 100)], date=dt.date(2026, 3, 1))
+    make_sale(customer, [item(p, 8)], date=dt.date(2026, 5, 1))
+    # On 1 Apr there are 10 on hand, but 8 are already sold on 1 May -> only 2 available
+    with pytest.raises(InsufficientStockError):
+        make_sale(customer, [item(p, 3)], date=dt.date(2026, 4, 1))
+    make_sale(customer, [item(p, 2)], date=dt.date(2026, 4, 1))
+    assert calculate_historical_stock(p, dt.date(2026, 4, 1)) == D("8")
+    assert calculate_stock(p) == D("0")

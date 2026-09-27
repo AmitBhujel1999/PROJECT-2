@@ -16,7 +16,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.common.models import BusinessSettings
-from apps.inventory.services import calculate_stock, create_stock_adjustment
+from apps.inventory.services import available_on, calculate_stock, create_stock_adjustment
 from apps.parties.models import CreditTerms, Party, PartyType
 from apps.payables.services import create_vendor_payment
 from apps.products.models import Product
@@ -160,7 +160,7 @@ class Command(BaseCommand):
             chosen = rng.sample(products, rng.randint(1, 3))
             items = []
             for p in chosen:
-                available = calculate_stock(p)
+                available = min(calculate_stock(p), available_on(p, day))
                 if available < 2:
                     continue
                 qty = Decimal(rng.randint(1, max(1, min(int(available // 3), int(p.reorder_level) + 3))))

@@ -13,7 +13,7 @@ import datetime as dt
 from collections.abc import Iterable
 from decimal import Decimal
 
-from django.db import transaction
+from django.db import connection, transaction
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -77,6 +77,48 @@ def calculate_stock_between(product: Product | int, start: dt.date, end: dt.date
     }
 
 
+def available_on(product: Product | int, on: dt.date) -> Decimal:
+    """Quantity that can leave stock on date ``on`` without any historical
+    balance (on that date or any later date) becoming negative.
+
+    = min(closing stock at ``on``, closing stock after each later movement).
+    This stops a back-dated sale from consuming units that were only received
+    later, or that later transactions already rely on.
+    """
+    product_id = product.pk if isinstance(product, Product) else product
+    at_date = calculate_historical_stock(product_id, on)
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT MIN(balance) FROM (
+                SELECT date, SUM(quantity_in - quantity_out) OVER (ORDER BY date, id) AS balance
+                FROM inventory_stockmovement WHERE product_id = %s
+            ) running WHERE date > %s
+            """,
+            [product_id, on],
+        )
+        later_min = cursor.fetchone()[0]
+    available = at_date if later_min is None else min(at_date, later_min)
+    return qty(max(available, Decimal("0")))
+
+
+def _insufficient(product: Product, available: Decimal, requested: Decimal, on: dt.date) -> InsufficientStockError:
+    unit = product.get_unit_display()
+    return InsufficientStockError(
+        f"Insufficient stock for {product.name}. Available: {available.normalize():f} {unit}, "
+        f"requested: {requested.normalize():f} {unit}.",
+        details={
+            "product_id": product.pk,
+            "product": product.name,
+            "sku_code": product.sku_code,
+            "available": str(available),
+            "requested": str(requested),
+            "unit": unit,
+            "date": on.isoformat(),
+        },
+    )
+
+
 def post_movement(
     product: Product,
     *,
@@ -97,20 +139,11 @@ def post_movement(
     if (quantity_in > 0) == (quantity_out > 0):
         raise BusinessError("A stock movement must be either inward or outward.", code="INVALID_MOVEMENT")
     current = calculate_stock(product)
+    if quantity_out > 0:
+        available = min(current, available_on(product, date))
+        if quantity_out > available:
+            raise _insufficient(product, available, quantity_out, date)
     new_balance = qty(current + quantity_in - quantity_out)
-    if new_balance < 0:
-        raise InsufficientStockError(
-            f"Insufficient stock for {product.name}. Available: {current.normalize():f} {product.get_unit_display()}, "
-            f"requested: {quantity_out.normalize():f} {product.get_unit_display()}.",
-            details={
-                "product_id": product.pk,
-                "product": product.name,
-                "sku_code": product.sku_code,
-                "available": str(current),
-                "requested": str(quantity_out),
-                "unit": product.get_unit_display(),
-            },
-        )
     return StockMovement.objects.create(
         product=product,
         date=date,
@@ -145,28 +178,18 @@ def post_opening_stock(product: Product, *, user=None, date: dt.date | None = No
     )
 
 
-def check_availability(requirements: dict[int, Decimal], products: dict[int, Product]) -> None:
+def check_availability(requirements: dict[int, Decimal], products: dict[int, Product], on: dt.date) -> None:
     """Validate that each product has enough stock for the requested quantity.
 
     ``requirements`` maps product id -> total quantity requested across all
-    lines, so two lines of the same product are checked together.
+    lines, so two lines of the same product are checked together. Stock is
+    checked as available on the document date (see :func:`available_on`).
     """
     for product_id, requested in requirements.items():
         product = products[product_id]
-        available = calculate_stock(product)
+        available = min(calculate_stock(product), available_on(product, on))
         if requested > available:
-            raise InsufficientStockError(
-                f"Insufficient stock for {product.name}. Available: {available.normalize():f} "
-                f"{product.get_unit_display()}, requested: {requested.normalize():f} {product.get_unit_display()}.",
-                details={
-                    "product_id": product.pk,
-                    "product": product.name,
-                    "sku_code": product.sku_code,
-                    "available": str(available),
-                    "requested": str(requested),
-                    "unit": product.get_unit_display(),
-                },
-            )
+            raise _insufficient(product, available, requested, on)
 
 
 @transaction.atomic
@@ -189,11 +212,13 @@ def create_stock_adjustment(*, product_id: int, quantity: Decimal, reason: str, 
         stock_after=qty(before + quantity),
         created_by=user,
     )
-    if adjustment.stock_after < 0:
-        raise InsufficientStockError(
-            f"Adjustment would make stock negative for {product.name}. Available: {before.normalize():f}.",
-            details={"product_id": product.pk, "available": str(before), "requested": str(-quantity)},
-        )
+    if quantity < 0:
+        available = min(before, available_on(product, date))
+        if -quantity > available:
+            raise InsufficientStockError(
+                f"Adjustment would make stock negative for {product.name}. Available: {available.normalize():f}.",
+                details={"product_id": product.pk, "available": str(available), "requested": str(-quantity)},
+            )
     adjustment.save()
     post_movement(
         product,

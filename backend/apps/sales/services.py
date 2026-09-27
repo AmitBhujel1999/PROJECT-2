@@ -24,7 +24,7 @@ from apps.common.documents import apply_totals, build_totals, resolve_due_date
 from apps.common.exceptions import BusinessError
 from apps.common.models import DocumentSequence, DocumentStatus
 from apps.inventory.models import MovementType
-from apps.inventory.services import calculate_stock, check_availability, lock_products, post_movement
+from apps.inventory.services import available_on, calculate_stock, check_availability, lock_products, post_movement
 from apps.parties.models import Party, PartyType
 from apps.products.models import Product
 
@@ -68,7 +68,7 @@ def calculate_sale_totals(data: dict) -> tuple[DocumentTotals, dict[int, Decimal
         data["items"], products, price_attr="selling_price",
         discount_type=data.get("discount_type"), discount_value=data.get("discount_value"),
     )
-    stock = {pid: calculate_stock(pid) for pid in products}
+    stock = {pid: min(calculate_stock(pid), available_on(pid, data["date"])) for pid in products}
     return totals, stock
 
 
@@ -79,7 +79,7 @@ def create_sale(*, data: dict, user) -> tuple[Sale, list[str]]:
     # 1-2. Lock the product rows, then read current stock under the lock.
     products = _products(data["items"], lock=True)
     # 3-4. Validate requested quantities (aggregated per product); reject shortfalls.
-    check_availability(_requirements(data["items"]), products)
+    check_availability(_requirements(data["items"]), products, data["date"])
 
     totals = build_totals(
         data["items"], products, price_attr="selling_price",
