@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework import mixins, viewsets
 from rest_framework.views import APIView
 
+from apps.common.money import money
 from apps.common.pagination import StandardPagination
 from apps.common.responses import created, ok
 from apps.common.utils import parse_date_param, parse_int_param
@@ -60,6 +61,8 @@ class StockRegisterView(APIView):
             low_stock_count=Count("pk", filter=Q(stock_status="LOW_STOCK")),
             out_of_stock_count=Count("pk", filter=Q(stock_status="OUT_OF_STOCK")),
         )
+        summary["total_cost_value"] = money(summary["total_cost_value"])
+        summary["total_retail_value"] = money(summary["total_retail_value"])
         paginator = StandardPagination()
         page = paginator.paginate_queryset(qs, request, view=self)
         data = StockRegisterSerializer(page, many=True).data

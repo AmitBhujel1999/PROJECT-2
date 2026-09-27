@@ -8,20 +8,20 @@ from .models import Product
 
 
 @transaction.atomic
-def create_product(*, data: dict, user) -> Product:
+def create_product(*, data: dict, user, opening_date=None) -> Product:
     product = Product.objects.create(**data)
-    _post_opening_stock(product, user)
+    _post_opening_stock(product, user, opening_date)
     record(AuditAction.CREATE, product, after=snapshot(product), user=user)
     return product
 
 
-def _post_opening_stock(product: Product, user) -> None:
+def _post_opening_stock(product: Product, user, opening_date=None) -> None:
     # Imported lazily: the inventory app depends on products.
     try:
         from apps.inventory.services import post_opening_stock
     except ImportError:  # pragma: no cover - inventory app not installed
         return
-    post_opening_stock(product, user=user)
+    post_opening_stock(product, user=user, date=opening_date)
 
 
 @transaction.atomic

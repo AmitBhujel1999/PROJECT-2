@@ -259,6 +259,8 @@ class StockReportView(APIView):
             low_stock_count=Count("pk", filter=Q(stock_status=StockStatus.LOW_STOCK)),
             out_of_stock_count=Count("pk", filter=Q(stock_status=StockStatus.OUT_OF_STOCK)),
         )
+        summary["total_cost_value"] = money(summary["total_cost_value"])
+        summary["total_retail_value"] = money(summary["total_retail_value"])
         summary["as_of"] = as_of
         summary["start_date"] = start
         if request.query_params.get("export"):
