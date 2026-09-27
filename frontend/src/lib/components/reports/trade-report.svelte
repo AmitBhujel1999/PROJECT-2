@@ -53,6 +53,7 @@
 					[isSale ? 'Taxable sales' : 'Taxable purchases', money(s.taxable_amount)],
 					[isSale ? 'Total tax' : 'Input tax', money(s.tax_amount)],
 					[isSale ? 'Net revenue' : 'Net purchases', money(s.net_amount)],
+					['Total incl. tax', money(s.total_amount)],
 					[isSale ? 'Outstanding' : 'Outstanding payables', money(s.outstanding)]
 				]
 			: []
@@ -79,7 +80,7 @@
 	</div>
 </Card>
 
-<div class="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7" data-testid="report-summary">
+<div class="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="report-summary">
 	{#each cards as [label, value] (label)}
 		<div class="rounded-xl border bg-card p-3 shadow-xs"><p class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p><p class="mt-1 font-semibold tabular-nums">{value}</p></div>
 	{/each}
