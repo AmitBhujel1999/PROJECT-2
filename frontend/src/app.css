@@ -1,0 +1,121 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+/* shadcn-style design tokens */
+:root {
+	--radius: 0.5rem;
+	--background: oklch(1 0 0);
+	--foreground: oklch(0.205 0.02 264);
+	--card: oklch(1 0 0);
+	--card-foreground: oklch(0.205 0.02 264);
+	--muted: oklch(0.967 0.003 264);
+	--muted-foreground: oklch(0.5 0.02 264);
+	--primary: oklch(0.45 0.13 255);
+	--primary-foreground: oklch(0.985 0 0);
+	--secondary: oklch(0.955 0.006 264);
+	--secondary-foreground: oklch(0.25 0.02 264);
+	--accent: oklch(0.955 0.012 255);
+	--accent-foreground: oklch(0.25 0.05 255);
+	--destructive: oklch(0.55 0.21 27);
+	--destructive-foreground: oklch(0.985 0 0);
+	--success: oklch(0.55 0.14 150);
+	--warning: oklch(0.72 0.15 75);
+	--border: oklch(0.91 0.005 264);
+	--input: oklch(0.87 0.008 264);
+	--ring: oklch(0.55 0.13 255);
+	--sidebar: oklch(0.21 0.03 264);
+	--sidebar-foreground: oklch(0.9 0.01 264);
+	--sidebar-muted: oklch(0.65 0.02 264);
+	--sidebar-accent: oklch(0.29 0.04 264);
+}
+
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-success: var(--success);
+	--color-warning: var(--warning);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-muted: var(--sidebar-muted);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	html {
+		-webkit-text-size-adjust: 100%;
+	}
+	body {
+		@apply bg-muted/40 text-foreground antialiased;
+		font-feature-settings: 'tnum' 1;
+	}
+	input[type='number']::-webkit-inner-spin-button,
+	input[type='number']::-webkit-outer-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+	input[type='number'] {
+		-moz-appearance: textfield;
+	}
+}
+
+@layer components {
+	.num {
+		@apply text-right tabular-nums whitespace-nowrap;
+	}
+	.table-base {
+		@apply w-full text-sm;
+	}
+	.table-base th {
+		@apply bg-muted/60 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap;
+	}
+	.table-base td {
+		@apply border-t px-3 py-2 align-middle;
+	}
+	.table-base tbody tr:hover {
+		@apply bg-muted/40;
+	}
+	.table-base tfoot td {
+		@apply border-t-2 bg-muted/50 px-3 py-2 font-semibold;
+	}
+}
+
+@media print {
+	.no-print {
+		display: none !important;
+	}
+	body {
+		background: white !important;
+	}
+	.print-full {
+		margin: 0 !important;
+		padding: 0 !important;
+		box-shadow: none !important;
+		border: none !important;
+	}
+	@page {
+		margin: 12mm;
+	}
+}
