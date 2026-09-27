@@ -19,6 +19,18 @@ re-calculated on every save. The browser never supplies authoritative numbers.
 
 ## Quick start (Docker)
 
+**Easiest:** install [Docker Desktop](https://www.docker.com/products/docker-desktop), start it, then from this folder run
+
+```bash
+./start.sh          # macOS / Linux
+.\start.ps1         # Windows PowerShell (if blocked: powershell -ExecutionPolicy Bypass -File .\start.ps1)
+```
+
+It creates `.env` with random secrets (and demo data), starts everything, waits
+until it is ready and prints the URL, username and password.
+
+**Manual:**
+
 ```bash
 cp .env.example .env
 # edit .env: set SECRET_KEY, POSTGRES_PASSWORD, DJANGO_SUPERUSER_PASSWORD
