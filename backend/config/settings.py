@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "apps.common",
     "apps.users",
+    "apps.audit",
 ]
 
 MIDDLEWARE = [
@@ -94,6 +95,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.common.middleware.SecurityHeadersMiddleware",
+    "apps.audit.middleware.AuditContextMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
