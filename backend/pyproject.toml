@@ -1,7 +1,7 @@
 [project]
 name = "accounting-backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "Accounting & Inventory Management System - Django REST API"
 requires-python = ">=3.11"
 dependencies = [
     "dj-database-url>=3.1.2",
