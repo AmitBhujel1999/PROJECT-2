@@ -16,6 +16,7 @@ api_patterns = [
     path("settings/", BusinessSettingsView.as_view(), name="business-settings"),
     path("", include("apps.users.urls")),
     path("", include("apps.audit.urls")),
+    path("", include("apps.products.urls")),
 ]
 
 urlpatterns = [
