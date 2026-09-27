@@ -1,0 +1,12 @@
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.env
+.git
+frontend/.svelte-kit
+frontend/build
+frontend/test-results
+frontend/playwright-report
+backend/staticfiles
+backups
