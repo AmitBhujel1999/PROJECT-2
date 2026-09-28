@@ -1,0 +1,721 @@
+<title>Khata Live Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-2: #eef2f7;
+  --ink: #152033;
+  --muted: #5a6679;
+  --line: #d9e0ea;
+  --accent: #1d4b9c;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3ebf8;
+  --good: #16734a;
+  --good-soft: #e2f3ea;
+  --warn: #9a5b00;
+  --warn-soft: #fbf0dc;
+  --bad: #b3261e;
+  --bad-soft: #fbe6e4;
+  --focus: #2f6fe0;
+  --radius: 8px;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0e131a; --surface: #151c26; --surface-2: #1b2430; --ink: #e5ebf3; --muted: #97a4b6;
+    --line: #2a3544; --accent: #7fa5f0; --accent-ink: #0e1624; --accent-soft: #1c2a42;
+    --good: #5fcf98; --good-soft: #13291f; --warn: #f0b458; --warn-soft: #2d2412;
+    --bad: #f28b82; --bad-soft: #321a19; --focus: #8fb2ff;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e131a; --surface: #151c26; --surface-2: #1b2430; --ink: #e5ebf3; --muted: #97a4b6;
+  --line: #2a3544; --accent: #7fa5f0; --accent-ink: #0e1624; --accent-soft: #1c2a42;
+  --good: #5fcf98; --good-soft: #13291f; --warn: #f0b458; --warn-soft: #2d2412;
+  --bad: #f28b82; --bad-soft: #321a19; --focus: #8fb2ff;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--sans); margin: 0; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; padding-block: 0 48px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.num, td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Top bar */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.topbar-inner { max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand b { font-size: 18px; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-size: 12px; }
+.status { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+.status.ok .dot { background: var(--good); }
+.status.err .dot { background: var(--bad); }
+.tabs { max-width: 1200px; margin: 0 auto; padding: 0 16px; display: flex; gap: 2px; overflow-x: auto; }
+.tab { border: 0; background: none; padding: 9px 12px; border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer; white-space: nowrap; font-weight: 500; }
+.tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.tab:disabled { opacity: .5; cursor: default; }
+
+/* Layout pieces */
+.page-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin: 24px 0 14px; }
+.page-head h2 { font-size: 22px; letter-spacing: -0.01em; }
+.page-head p { margin: 2px 0 0; color: var(--muted); max-width: 70ch; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.panel-head { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.panel-head h3 { font-size: 14px; }
+.panel-body { padding: 14px; }
+.grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.stack { display: grid; gap: 16px; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.kpi .label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.kpi .value { font: 500 20px/1.3 var(--mono); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.kpi .hint { font-size: 12px; color: var(--muted); }
+.kpi.bad .value { color: var(--bad); }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; background: var(--surface-2); padding: 8px 10px; white-space: nowrap; }
+td { padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: middle; }
+tfoot td { font-weight: 600; background: var(--surface-2); border-top: 2px solid var(--line); }
+tbody tr.clickable { cursor: pointer; }
+tbody tr.clickable:hover { background: var(--surface-2); }
+.empty { padding: 24px; text-align: center; color: var(--muted); }
+
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.pill.PAID, .pill.IN_STOCK { background: var(--good-soft); color: var(--good); }
+.pill.PARTIAL, .pill.LOW_STOCK { background: var(--warn-soft); color: var(--warn); }
+.pill.UNPAID, .pill.OUT_OF_STOCK { background: var(--bad-soft); color: var(--bad); }
+
+label.field { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 500; }
+input, select, textarea { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; min-width: 0; width: 100%; }
+input.numin { text-align: right; font-family: var(--mono); }
+.row { display: flex; flex-wrap: wrap; gap: 12px; }
+.row > * { flex: 1 1 160px; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 7px 12px; cursor: pointer; font-weight: 500; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.07); }
+.btn.small { padding: 4px 9px; font-size: 13px; }
+.btn:disabled { opacity: .55; cursor: default; }
+
+.totals { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 14px; }
+.totals dt { color: var(--muted); }
+.totals dd { margin: 0; text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.totals .grand { font-weight: 700; font-size: 18px; color: var(--ink); border-top: 1px solid var(--line); padding-top: 8px; }
+
+.msg { border-radius: 6px; padding: 10px 12px; font-size: 13px; }
+.msg.ok { background: var(--good-soft); color: var(--good); }
+.msg.err { background: var(--bad-soft); color: var(--bad); }
+.msg.info { background: var(--accent-soft); color: var(--accent); }
+
+.console textarea { font-family: var(--mono); font-size: 13px; min-height: 130px; resize: vertical; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.note { font-size: 12px; color: var(--muted); }
+.loading { display: grid; place-items: center; min-height: 50vh; text-align: center; gap: 10px; color: var(--muted); }
+.bar { width: 240px; max-width: 70vw; height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 40%; background: var(--accent); animation: slide 1.2s ease-in-out infinite; }
+@keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+@media (prefers-reduced-motion: reduce) { .bar i { animation: none; width: 100%; } }
+</style>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><b>Khata</b><span>Accounting &amp; Inventory · live demo</span></div>
+    <div class="status" id="status"><i class="dot"></i><span id="status-text">Starting PostgreSQL in your browser…</span></div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Sections" id="tabs">
+    <button class="tab" role="tab" data-tab="dashboard" aria-selected="true">Dashboard</button>
+    <button class="tab" role="tab" data-tab="sale" aria-selected="false">New sale</button>
+    <button class="tab" role="tab" data-tab="receipt" aria-selected="false">Receive payment</button>
+    <button class="tab" role="tab" data-tab="sales" aria-selected="false">Sales</button>
+    <button class="tab" role="tab" data-tab="stock" aria-selected="false">Stock</button>
+    <button class="tab" role="tab" data-tab="aging" aria-selected="false">Receivables aging</button>
+    <button class="tab" role="tab" data-tab="ledger" aria-selected="false">Customer ledger</button>
+    <button class="tab" role="tab" data-tab="sql" aria-selected="false">SQL console</button>
+  </nav>
+</header>
+
+<main class="wrap" id="main">
+  <div class="loading" id="loading">
+    <div>
+      <p><b>Loading a real PostgreSQL database into this page…</b></p>
+      <p class="note">About 13&nbsp;MB on first open. The demo data comes from <code>accounting_demo.sql</code>.</p>
+    </div>
+    <div class="bar"><i></i></div>
+  </div>
+  <section id="view" hidden></section>
+</main>
+
+<script type="module">
+import { PGlite } from 'https://cdn.jsdelivr.net/npm/@electric-sql/pglite@0.5.8/dist/index.js';
+
+// ---------------------------------------------------------------------------
+// Boot: real PostgreSQL (PGlite, WebAssembly) + the project's SQL dump
+// ---------------------------------------------------------------------------
+const $ = (s, el = document) => el.querySelector(s);
+const statusEl = $('#status'), statusText = $('#status-text');
+let db, ADMIN_ID, TODAY;
+
+async function fetchBytes(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Could not load ${url} (${r.status})`);
+  return r.arrayBuffer();
+}
+
+// PostgreSQL's file-system bundle is shipped gzip-compressed as base64 text.
+async function fetchDataBundle(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Could not load ${url} (${r.status})`);
+  const b64 = (await r.text()).trim();
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Response(stream).arrayBuffer();
+}
+
+async function boot() {
+  const [pgWasm, initWasm, data, sql] = await Promise.all([
+    fetchBytes('pglite.wasm'), fetchBytes('initdb.wasm'), fetchDataBundle('pglite-data.gz.b64.txt'),
+    fetch('accounting_demo.sql').then(r => { if (!r.ok) throw new Error('Could not load accounting_demo.sql'); return r.text(); })
+  ]);
+  statusText.textContent = 'Initialising PostgreSQL…';
+  db = await PGlite.create({
+    pgliteWasmModule: await WebAssembly.compile(pgWasm),
+    initdbWasmModule: await WebAssembly.compile(initWasm),
+    fsBundle: new Blob([data])
+  });
+  statusText.textContent = 'Importing accounting_demo.sql…';
+  await db.exec(sql);
+  await db.exec("SET search_path TO public");
+  const v = (await db.query("select current_setting('server_version') v, (select id::int from users_user where username='admin') a, current_date::text d")).rows[0];
+  ADMIN_ID = v.a; TODAY = v.d;
+  statusEl.classList.add('ok');
+  statusText.textContent = `PostgreSQL ${v.v.split(' ')[0]} running in your browser · changes stay in this tab`;
+  $('#loading').hidden = true;
+  $('#view').hidden = false;
+  show('dashboard');
+}
+
+// ---------------------------------------------------------------------------
+// Exact decimal helpers (integer cents / thousandths as BigInt; no floats)
+// ---------------------------------------------------------------------------
+function scaled(value, places) {
+  const s = String(value ?? '').trim();
+  if (!/^-?\d*(\.\d*)?$/.test(s) || s === '' || s === '-' || s === '.') return null;
+  const neg = s.startsWith('-');
+  const [i, f = ''] = s.replace('-', '').split('.');
+  const n = BigInt(i || '0') * 10n ** BigInt(places) + BigInt((f + '0'.repeat(places)).slice(0, places) || '0');
+  return neg ? -n : n;
+}
+const cents = v => scaled(v, 2);
+const milli = v => scaled(v, 3);
+const divRound = (a, b) => (a >= 0n ? (2n * a + b) / (2n * b) : -((2n * -a + b) / (2n * b))); // ROUND_HALF_UP
+function toDec(n, places) {
+  const neg = n < 0n; const a = neg ? -n : n; const p = 10n ** BigInt(places);
+  return `${neg ? '-' : ''}${a / p}.${String(a % p).padStart(places, '0')}`;
+}
+function money(v, blankZero = false) {
+  if (v === null || v === undefined || v === '') return '';
+  const n = typeof v === 'bigint' ? v : cents(String(v));
+  if (n === null) return String(v);
+  if (blankZero && n === 0n) return '–';
+  const s = toDec(n, 2); const neg = s.startsWith('-');
+  const [i, f] = s.replace('-', '').split('.');
+  const grouped = i.length <= 3 ? i : i.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + i.slice(-3);
+  return `${neg ? '-' : ''}${grouped}.${f}`;
+}
+function qty(v) { const n = Number(v); return Number.isFinite(n) ? String(+n.toFixed(3)) : String(v); }
+function fmtDate(d) { if (!d) return ''; const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}/${m}/${y}`; }
+function addDays(iso, days) { const [y, m, d] = iso.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1, d + days)); return t.toISOString().slice(0, 10); }
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pill = s => s ? `<span class="pill ${esc(s)}">${esc(s.replace('_', ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase()))}</span>` : '';
+const q = async (sql, params = []) => (await db.query(sql, params)).rows;
+
+// ---------------------------------------------------------------------------
+// Calculation engine — same order and rounding as the Django backend
+// gross -> item discount -> net -> invoice discount (pro-rata) -> taxable -> tax -> total
+// ---------------------------------------------------------------------------
+function calculate(lines, invType, invValue) {
+  const res = lines.map((l, i) => {
+    const q3 = milli(l.quantity), price = cents(l.price), rate = cents(l.taxRate);
+    if (q3 === null || q3 <= 0n) throw new Error(`Line ${i + 1}: quantity must be greater than zero.`);
+    if (price === null || price < 0n) throw new Error(`Line ${i + 1}: price cannot be negative.`);
+    const gross = divRound(q3 * price, 1000n);
+    let disc = 0n;
+    if (l.discType && l.discValue !== '') {
+      const dv = cents(l.discValue);
+      if (dv === null || dv < 0n) throw new Error(`Line ${i + 1}: discount cannot be negative.`);
+      if (l.discType === 'PERCENTAGE') { if (dv > 10000n) throw new Error(`Line ${i + 1}: discount cannot exceed 100%.`); disc = divRound(gross * dv, 10000n); }
+      else { if (dv > gross) throw new Error(`Line ${i + 1}: discount (${money(dv)}) cannot exceed the amount (${money(gross)}).`); disc = dv; }
+    }
+    return { ...l, q3, price, rate, gross, disc, net: gross - disc, share: 0n };
+  });
+  const subtotal = res.reduce((s, r) => s + r.gross, 0n);
+  const itemDisc = res.reduce((s, r) => s + r.disc, 0n);
+  const netSub = subtotal - itemDisc;
+  let inv = 0n;
+  if (invType && invValue !== '') {
+    const dv = cents(invValue);
+    if (dv === null || dv < 0n) throw new Error('Invoice discount cannot be negative.');
+    if (invType === 'PERCENTAGE') { if (dv > 10000n) throw new Error('Invoice discount cannot exceed 100%.'); inv = divRound(netSub * dv, 10000n); }
+    else { if (dv > netSub) throw new Error(`Invoice discount (${money(dv)}) cannot exceed the amount it applies to (${money(netSub)}).`); inv = dv; }
+  }
+  if (inv > 0n && netSub > 0n) {
+    let allocated = 0n;
+    for (const r of res) { r.share = divRound(inv * r.net, netSub); allocated += r.share; }
+    const largest = res.reduce((a, b) => (b.net > a.net ? b : a));
+    largest.share += inv - allocated;
+  }
+  let taxable = 0n, tax = 0n;
+  for (const r of res) {
+    r.taxable = r.net - r.share;
+    r.tax = divRound(r.taxable * r.rate, 10000n);
+    r.total = r.taxable + r.tax;
+    taxable += r.taxable; tax += r.tax;
+  }
+  return { lines: res, subtotal, itemDisc, inv, taxable, tax, total: taxable + tax };
+}
+
+// Stock that may leave on `date` without making any past or later balance negative.
+async function availableOn(tx, productId, date) {
+  const r = (await tx.query(`
+    with m as (select date, sum(quantity_in - quantity_out) over (order by date, id) bal
+               from inventory_stockmovement where product_id = $1)
+    select coalesce((select sum(quantity_in - quantity_out) from inventory_stockmovement where product_id = $1 and date <= $2), 0)::text at_date,
+           (select min(bal) from m where date > $2)::text later_min,
+           coalesce((select running_balance from inventory_stockmovement where product_id = $1 order by id desc limit 1), 0)::text current`,
+    [productId, date])).rows[0];
+  let a = milli(r.at_date);
+  if (r.later_min !== null) { const l = milli(r.later_min); if (l < a) a = l; }
+  const c = milli(r.current); if (c < a) a = c;
+  return { available: a < 0n ? 0n : a, current: c };
+}
+
+async function nextNumber(tx, key) {
+  const r = (await tx.query(`update common_documentsequence set last_number = last_number + 1 where key = $1 returning prefix, padding, last_number::int last_number`, [key])).rows[0];
+  return `${r.prefix}-${String(r.last_number).padStart(r.padding, '0')}`;
+}
+
+async function refreshSalePayment(tx, saleId) {
+  await tx.query(`
+    update sales_sale s set amount_paid = coalesce(a.paid, 0),
+      payment_status = case when coalesce(a.paid,0) <= 0 then 'UNPAID' when coalesce(a.paid,0) >= s.total_amount then 'PAID' else 'PARTIAL' end,
+      updated_at = now()
+    from (select sum(amount) paid from receivables_customerreceiptallocation where sale_id = $1 and is_active) a
+    where s.id = $1`, [saleId]);
+}
+
+async function createReceipt(tx, { customerId, date, amount, method, reference, notes, onlySaleId = null }) {
+  const number = await nextNumber(tx, 'customer_receipt');
+  const rec = (await tx.query(`
+    insert into receivables_customerreceipt (created_at, updated_at, date, amount, allocated_amount, payment_method, reference_number, notes, status, cancel_reason, receipt_number, created_by_id, customer_id)
+    values (now(), now(), $1, $2, 0, $3, $4, $5, 'ACTIVE', '', $6, $7, $8) returning id::int id`,
+    [date, toDec(amount, 2), method, reference || '', notes || '', number, ADMIN_ID, customerId])).rows[0];
+  // FIFO: oldest due first (or the single sale being paid on creation)
+  const open = await tx.query(`
+    select id::int id, date::text, (total_amount - amount_paid)::text bal from sales_sale
+    where customer_id = $1 and status = 'ACTIVE' and amount_paid < total_amount ${onlySaleId ? 'and id = $2' : ''}
+    order by due_date, date, id for update`, onlySaleId ? [customerId, onlySaleId] : [customerId]);
+  let remaining = amount; const applied = [];
+  for (const s of open.rows) {
+    if (remaining <= 0n) break;
+    const bal = cents(s.bal); const amt = remaining < bal ? remaining : bal;
+    await tx.query(`insert into receivables_customerreceiptallocation (amount, date, is_active, created_at, void_reason, created_by_id, receipt_id, sale_id)
+                    values ($1, greatest($2::date, $3::date), true, now(), '', $4, $5, $6)`, [toDec(amt, 2), date, s.date, ADMIN_ID, rec.id, s.id]);
+    await refreshSalePayment(tx, s.id);
+    remaining -= amt; applied.push(s.id);
+  }
+  await tx.query(`update receivables_customerreceipt set allocated_amount = $1 where id = $2`, [toDec(amount - remaining, 2), rec.id]);
+  return { number, allocated: amount - remaining, advance: remaining, applied: applied.length };
+}
+
+// ---------------------------------------------------------------------------
+// Views
+// ---------------------------------------------------------------------------
+const view = $('#view');
+const views = {};
+function show(name) {
+  for (const t of document.querySelectorAll('.tab')) t.setAttribute('aria-selected', String(t.dataset.tab === name));
+  views[name]().catch(err => { view.innerHTML = `<div class="msg err" style="margin-top:24px">${esc(err.message)}</div>`; });
+}
+$('#tabs').addEventListener('click', e => { const t = e.target.closest('.tab'); if (t && db) show(t.dataset.tab); });
+
+function table(headers, rows, { foot = null, empty = 'No records.', rowAttr = () => '' } = {}) {
+  const th = headers.map(h => `<th class="${h.num ? 'num' : ''}">${esc(h.label)}</th>`).join('');
+  const body = rows.length ? rows.map(r => `<tr ${rowAttr(r)}>${headers.map(h => `<td class="${h.num ? 'num' : ''}">${h.html ? h.html(r) : esc(r[h.key])}</td>`).join('')}</tr>`).join('')
+    : `<tr><td colspan="${headers.length}" class="empty">${esc(empty)}</td></tr>`;
+  const tf = foot ? `<tfoot><tr>${headers.map(h => `<td class="${h.num ? 'num' : ''}">${foot[h.key] ?? ''}</td>`).join('')}</tr></tfoot>` : '';
+  return `<div class="table-wrap"><table><thead><tr>${th}</tr></thead><tbody>${body}</tbody>${tf}</table></div>`;
+}
+
+views.dashboard = async () => {
+  const [k] = await q(`
+    select (select coalesce(sum(total_amount),0) from sales_sale where status='ACTIVE')::text sales,
+           (select count(*) from sales_sale where status='ACTIVE') sale_count,
+           (select coalesce(sum(total_amount),0) from purchases_purchase where status='ACTIVE')::text purchases,
+           (select coalesce(sum(total_amount - amount_paid),0) from sales_sale where status='ACTIVE')::text receivable,
+           (select coalesce(sum(total_amount - amount_paid),0) from sales_sale where status='ACTIVE' and due_date < current_date)::text overdue,
+           (select coalesce(sum(total_amount - amount_paid),0) from purchases_purchase where status='ACTIVE')::text payable,
+           (select coalesce(sum(amount - allocated_amount),0) from receivables_customerreceipt where status='ACTIVE')::text advances,
+           (select count(*) from parties_party where type='CUSTOMER' and is_active) customers`);
+  const stock = await q(stockSql);
+  const stockValue = stock.reduce((s, r) => s + cents(r.cost_value), 0n);
+  const low = stock.filter(r => r.status !== 'IN_STOCK');
+  const recent = await q(`select s.id::int id, s.invoice_number, s.date::text, p.name, s.total_amount::text, s.payment_status
+                          from sales_sale s join parties_party p on p.id = s.customer_id order by s.date desc, s.id desc limit 8`);
+  view.innerHTML = `
+    <div class="page-head"><div><h2>Dashboard</h2><p>Everything below is computed by SQL queries against the PostgreSQL database running in this page.</p></div></div>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Sales (all time)</div><div class="value">${money(k.sales)}</div><div class="hint">${k.sale_count} invoices · NPR</div></div>
+      <div class="kpi"><div class="label">Receivables</div><div class="value">${money(k.receivable)}</div><div class="hint">Customer advances ${money(k.advances)}</div></div>
+      <div class="kpi bad"><div class="label">Overdue receivables</div><div class="value">${money(k.overdue)}</div><div class="hint">Past due date</div></div>
+      <div class="kpi"><div class="label">Payables</div><div class="value">${money(k.payable)}</div><div class="hint">Purchases ${money(k.purchases)}</div></div>
+      <div class="kpi"><div class="label">Stock value (cost)</div><div class="value">${money(stockValue)}</div><div class="hint">${stock.length} products · ${k.customers} customers</div></div>
+      <div class="kpi ${low.length ? 'bad' : ''}"><div class="label">Low / out of stock</div><div class="value">${low.length}</div><div class="hint">At or below reorder level</div></div>
+    </div>
+    <div class="grid-2" style="margin-top:16px">
+      <div class="panel"><div class="panel-head"><h3>Recent sales</h3><button class="btn small" data-go="sales">All sales</button></div>
+        ${table([{ label: 'Invoice', key: 'invoice_number' }, { label: 'Date', html: r => fmtDate(r.date) }, { label: 'Customer', key: 'name' },
+          { label: 'Total', num: true, html: r => money(r.total_amount) }, { label: 'Status', html: r => pill(r.payment_status) }], recent)}</div>
+      <div class="panel"><div class="panel-head"><h3>Low stock</h3></div>
+        ${table([{ label: 'Product', key: 'name' }, { label: 'Stock', num: true, html: r => qty(r.stock) }, { label: 'Status', html: r => pill(r.status) }], low, { empty: 'All products are above their reorder level.' })}</div>
+    </div>`;
+  view.querySelector('[data-go]').onclick = () => show('sales');
+};
+
+const stockSql = `
+  select p.id::int id, p.sku_code, p.name, initcap(lower(p.unit)) unit,
+         coalesce(sum(m.quantity_in - m.quantity_out), 0)::text stock,
+         coalesce(sum(m.quantity_in) filter (where m.transaction_type = 'PURCHASE'), 0)::text purchased,
+         coalesce(sum(m.quantity_out) filter (where m.transaction_type = 'SALE'), 0)::text sold,
+         round(coalesce(sum(m.quantity_in - m.quantity_out), 0) * p.purchase_price, 2)::text cost_value,
+         round(coalesce(sum(m.quantity_in - m.quantity_out), 0) * p.selling_price, 2)::text retail_value,
+         p.reorder_level::text reorder, p.selling_price::text price, p.tax_rate::text tax_rate,
+         case when coalesce(sum(m.quantity_in - m.quantity_out), 0) <= 0 then 'OUT_OF_STOCK'
+              when coalesce(sum(m.quantity_in - m.quantity_out), 0) <= p.reorder_level then 'LOW_STOCK' else 'IN_STOCK' end status
+  from products_product p left join inventory_stockmovement m on m.product_id = p.id
+  where p.is_active group by p.id order by p.name`;
+
+views.stock = async () => {
+  const rows = await q(stockSql);
+  const tc = rows.reduce((s, r) => s + cents(r.cost_value), 0n), tr = rows.reduce((s, r) => s + cents(r.retail_value), 0n);
+  view.innerHTML = `
+    <div class="page-head"><div><h2>Stock register</h2><p>Stock is the sum of the immutable stock ledger. Try an UPDATE on <code>inventory_stockmovement</code> in the SQL console: a trigger refuses it.</p></div></div>
+    <div class="panel">${table([
+      { label: 'SKU', key: 'sku_code' }, { label: 'Item', key: 'name' }, { label: 'Unit', key: 'unit' },
+      { label: 'Purchased', num: true, html: r => qty(r.purchased) }, { label: 'Sold', num: true, html: r => qty(r.sold) },
+      { label: 'Stock', num: true, html: r => `<b>${qty(r.stock)}</b>` }, { label: 'Cost value', key: 'cost_value', num: true, html: r => money(r.cost_value) },
+      { label: 'Retail value', key: 'retail_value', num: true, html: r => money(r.retail_value) }, { label: 'Reorder', num: true, html: r => qty(r.reorder) },
+      { label: 'Status', html: r => pill(r.status) }], rows, { foot: { name: 'Total', cost_value: money(tc), retail_value: money(tr) } })}</div>`;
+};
+
+views.sales = async () => {
+  const rows = await q(`select s.id::int id, s.invoice_number, s.date::text, s.due_date::text, p.name, s.subtotal::text,
+      (s.item_discount_total + s.discount_amount)::text disc, s.tax_amount::text, s.total_amount::text,
+      (s.total_amount - s.amount_paid)::text balance, s.payment_status
+    from sales_sale s join parties_party p on p.id = s.customer_id where s.status = 'ACTIVE' order by s.date desc, s.id desc`);
+  view.innerHTML = `
+    <div class="page-head"><div><h2>Sales</h2><p>${rows.length} active invoices. Select one to see its lines.</p></div><button class="btn primary" data-go="sale">New sale</button></div>
+    <div class="grid-2"><div class="panel">${table([
+      { label: 'Invoice', key: 'invoice_number' }, { label: 'Date', html: r => fmtDate(r.date) }, { label: 'Due', html: r => fmtDate(r.due_date) },
+      { label: 'Customer', key: 'name' }, { label: 'Total', num: true, html: r => money(r.total_amount) },
+      { label: 'Balance', num: true, html: r => money(r.balance, true) }, { label: 'Status', html: r => pill(r.payment_status) }],
+      rows, { rowAttr: r => `class="clickable" data-id="${r.id}"` })}</div>
+      <div class="panel" id="invoice-detail"><div class="panel-body note">Select an invoice.</div></div></div>`;
+  view.querySelector('[data-go]').onclick = () => show('sale');
+  view.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => showInvoice(Number(tr.dataset.id)));
+  if (rows[0]) showInvoice(rows[0].id);
+};
+
+async function showInvoice(id) {
+  const [s] = await q(`select s.*, s.date::text d, s.due_date::text dd, p.name, p.pan_vat_no from sales_sale s join parties_party p on p.id = s.customer_id where s.id = $1`, [id]);
+  const items = await q(`select p.name, i.quantity::text, i.unit_price::text, i.gross_amount::text, (i.discount_amount + i.invoice_discount_share)::text disc,
+      i.taxable_amount::text, i.tax_amount::text, i.total_price::text from sales_saleitem i join products_product p on p.id = i.product_id where i.sale_id = $1 order by i.id`, [id]);
+  $('#invoice-detail').innerHTML = `
+    <div class="panel-head"><h3>${esc(s.invoice_number)}</h3>${pill(s.payment_status)}</div>
+    <div class="panel-body stack">
+      <div class="note">${esc(s.name)}${s.pan_vat_no ? ` · PAN/VAT ${esc(s.pan_vat_no)}` : ''}<br>Date ${fmtDate(s.d)} · Due ${fmtDate(s.dd)}</div>
+      ${table([{ label: 'Item', key: 'name' }, { label: 'Qty', num: true, html: r => qty(r.quantity) }, { label: 'Total', num: true, html: r => money(r.total_price) }], items)}
+      <dl class="totals">
+        <dt>Subtotal</dt><dd>${money(s.subtotal)}</dd><dt>Item discounts</dt><dd>${money(s.item_discount_total)}</dd>
+        <dt>Invoice discount</dt><dd>${money(s.discount_amount)}</dd><dt>Taxable</dt><dd>${money(s.taxable_amount)}</dd>
+        <dt>VAT</dt><dd>${money(s.tax_amount)}</dd><dt class="grand">Grand total</dt><dd class="grand">${money(s.total_amount)}</dd>
+        <dt>Paid</dt><dd>${money(s.amount_paid)}</dd><dt>Balance</dt><dd>${money(cents(String(s.total_amount)) - cents(String(s.amount_paid)))}</dd>
+      </dl></div>`;
+}
+
+views.sale = async () => {
+  const customers = await q(`select id::int id, name, credit_days from parties_party where type = 'CUSTOMER' and is_active order by name`);
+  const products = await q(stockSql);
+  let rows = [{ product: '', quantity: '1', price: '', discType: '', discValue: '' }];
+  view.innerHTML = `
+    <div class="page-head"><div><h2>New sale</h2><p>Totals use the same calculation order and rounding as the Django backend. Saving runs one transaction: stock check, invoice number, sale, lines, stock ledger OUT.</p></div></div>
+    <div class="grid-2">
+      <div class="stack">
+        <div class="panel panel-body"><div class="row">
+          <label class="field">Customer<select id="s-customer">${customers.map(c => `<option value="${c.id}" data-days="${c.credit_days}">${esc(c.name)}</option>`).join('')}</select></label>
+          <label class="field">Date<input id="s-date" type="date" value="${TODAY}"></label>
+          <label class="field">Due date<input id="s-due" type="date" disabled></label>
+        </div></div>
+        <div class="panel"><div class="panel-head"><h3>Items</h3><button class="btn small" id="s-add">Add row</button></div>
+          <div class="table-wrap"><table id="s-items" style="min-width:760px"><thead><tr><th>Item</th><th class="num">Stock</th><th class="num">Qty</th><th class="num">Price</th><th>Discount</th><th class="num">Value</th><th class="num">Net</th><th></th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="panel panel-body stack">
+          <div class="row"><label class="field">Invoice discount<select id="s-invtype"><option value="">None</option><option value="PERCENTAGE">Percentage (%)</option><option value="FIXED">Fixed (NPR)</option></select></label>
+          <label class="field">Value<input id="s-invval" class="numin" inputmode="decimal"></label></div>
+          <dl class="totals" id="s-totals"></dl>
+          <label class="field" style="grid-template-columns:auto 1fr;align-items:center;gap:8px"><input type="checkbox" id="s-paid" style="width:auto"> Paid in full (cash receipt allocated to this invoice)</label>
+          <button class="btn primary" id="s-save">Save sale</button>
+          <div id="s-msg"></div>
+        </div>
+      </div>
+    </div>`;
+  const tbody = $('#s-items tbody');
+  const productById = id => products.find(p => String(p.id) === String(id));
+  const setDue = () => { const days = Number($('#s-customer').selectedOptions[0]?.dataset.days || 0); $('#s-due').value = addDays($('#s-date').value || TODAY, days); };
+  function renderRows() {
+    tbody.innerHTML = rows.map((r, i) => {
+      const p = productById(r.product);
+      return `<tr data-i="${i}">
+        <td><select data-f="product" aria-label="Item row ${i + 1}"><option value="">Choose item…</option>${products.map(pp => `<option value="${pp.id}" ${String(pp.id) === String(r.product) ? 'selected' : ''}>${esc(pp.name)}</option>`).join('')}</select></td>
+        <td class="num">${p ? qty(p.stock) : ''}</td>
+        <td><input data-f="quantity" class="numin" inputmode="decimal" value="${esc(r.quantity)}" aria-label="Quantity row ${i + 1}" style="width:80px"></td>
+        <td><input data-f="price" class="numin" inputmode="decimal" value="${esc(r.price)}" aria-label="Price row ${i + 1}" style="width:110px"></td>
+        <td><select data-f="discType" aria-label="Discount type row ${i + 1}" style="width:90px"><option value="">None</option><option value="PERCENTAGE" ${r.discType === 'PERCENTAGE' ? 'selected' : ''}>%</option><option value="FIXED" ${r.discType === 'FIXED' ? 'selected' : ''}>Fixed</option></select></td>
+        <td><input data-f="discValue" class="numin" inputmode="decimal" value="${esc(r.discValue)}" aria-label="Discount row ${i + 1}" style="width:80px" ${r.discType ? '' : 'disabled'}></td>
+        <td class="num" data-net></td>
+        <td><button class="btn small" data-rm aria-label="Remove row ${i + 1}">✕</button></td></tr>`;
+    }).join('');
+    recalc();
+  }
+  function current() {
+    const used = rows.filter(r => r.product);
+    return used.map(r => { const p = productById(r.product); return { ...r, name: p.name, taxRate: p.tax_rate, productId: p.id }; });
+  }
+  function recalc() {
+    const box = $('#s-totals'); $('#s-msg').innerHTML = '';
+    try {
+      const t = calculate(current(), $('#s-invtype').value, $('#s-invval').value);
+      let k = 0;
+      tbody.querySelectorAll('tr').forEach((tr, i) => { tr.querySelector('[data-net]').textContent = rows[i].product ? money(t.lines[k++].net) : ''; });
+      box.innerHTML = `<dt>Subtotal</dt><dd>${money(t.subtotal)}</dd><dt>Item discounts</dt><dd>${money(t.itemDisc)}</dd>
+        <dt>Invoice discount</dt><dd>${money(t.inv)}</dd><dt>Taxable amount</dt><dd>${money(t.taxable)}</dd>
+        <dt>VAT</dt><dd>${money(t.tax)}</dd><dt class="grand">Grand total</dt><dd class="grand" id="s-grand">NPR ${money(t.total)}</dd>`;
+      return t;
+    } catch (e) { box.innerHTML = `<dt class="grand">Grand total</dt><dd class="grand">–</dd>`; $('#s-msg').innerHTML = `<div class="msg err">${esc(e.message)}</div>`; return null; }
+  }
+  tbody.addEventListener('input', e => {
+    const tr = e.target.closest('tr'); const i = Number(tr.dataset.i); const f = e.target.dataset.f; if (!f) return;
+    rows[i][f] = e.target.value;
+    if (f === 'product') { const p = productById(e.target.value); rows[i].price = p ? p.price : ''; if (i === rows.length - 1 && p) rows.push({ product: '', quantity: '1', price: '', discType: '', discValue: '' }); renderRows(); }
+    else if (f === 'discType') { if (!e.target.value) rows[i].discValue = ''; renderRows(); }
+    else recalc();
+  });
+  tbody.addEventListener('click', e => { if (e.target.closest('[data-rm]')) { rows.splice(Number(e.target.closest('tr').dataset.i), 1); if (!rows.length) rows.push({ product: '', quantity: '1', price: '', discType: '', discValue: '' }); renderRows(); } });
+  $('#s-add').onclick = () => { rows.push({ product: '', quantity: '1', price: '', discType: '', discValue: '' }); renderRows(); };
+  ['#s-invtype', '#s-invval'].forEach(s => $(s).addEventListener('input', () => { $('#s-invval').disabled = !$('#s-invtype').value; recalc(); }));
+  $('#s-invval').disabled = true;
+  $('#s-customer').onchange = setDue; $('#s-date').onchange = setDue; setDue();
+  renderRows();
+
+  $('#s-save').onclick = async () => {
+    const t = recalc(); if (!t) return;
+    const lines = current(); if (!lines.length) { $('#s-msg').innerHTML = '<div class="msg err">Add at least one item.</div>'; return; }
+    const date = $('#s-date').value, customerId = Number($('#s-customer').value), due = $('#s-due').value;
+    const btn = $('#s-save'); btn.disabled = true;
+    try {
+      const out = await db.transaction(async tx => {
+        const ids = [...new Set(lines.map(l => l.productId))].sort((a, b) => a - b);
+        for (const id of ids) await tx.query('select id from products_product where id = $1 for update', [id]);
+        const need = new Map(); for (const l of t.lines) need.set(l.productId, (need.get(l.productId) || 0n) + l.q3);
+        const cur = new Map();
+        for (const [pid, req] of need) {
+          const { available, current } = await availableOn(tx, pid, date); cur.set(pid, current);
+          if (req > available) { const p = productById(pid); throw new Error(`Insufficient stock for ${p.name}. Available: ${qty(toDec(available, 3))} ${p.unit}, requested: ${qty(toDec(req, 3))} ${p.unit}. Sale cannot be completed.`); }
+        }
+        const number = await nextNumber(tx, 'sale');
+        const sale = (await tx.query(`insert into sales_sale (created_at, updated_at, date, due_date, subtotal, item_discount_total, discount_type, discount_value, discount_amount,
+            taxable_amount, tax_amount, total_amount, amount_paid, payment_status, status, notes, cancel_reason, invoice_number, created_by_id, customer_id)
+          values (now(), now(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 0, 'UNPAID', 'ACTIVE', 'Created in the browser demo', '', $11, $12, $13) returning id::int id`,
+          [date, due, toDec(t.subtotal, 2), toDec(t.itemDisc, 2), $('#s-invtype').value || null, $('#s-invtype').value ? ($('#s-invval').value || '0') : '0',
+           toDec(t.inv, 2), toDec(t.taxable, 2), toDec(t.tax, 2), toDec(t.total, 2), number, ADMIN_ID, customerId])).rows[0];
+        const customerName = $('#s-customer').selectedOptions[0].textContent;
+        for (const l of t.lines) {
+          await tx.query(`insert into sales_saleitem (quantity, gross_amount, discount_type, discount_value, discount_amount, invoice_discount_share, taxable_amount, tax_rate, tax_amount, unit_price, total_price, product_id, sale_id)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+            [toDec(l.q3, 3), toDec(l.gross, 2), l.discType || null, l.discType ? (l.discValue || '0') : '0', toDec(l.disc, 2), toDec(l.share, 2),
+             toDec(l.taxable, 2), toDec(l.rate, 2), toDec(l.tax, 2), toDec(l.price, 2), toDec(l.total, 2), l.productId, sale.id]);
+          const bal = cur.get(l.productId) - l.q3; cur.set(l.productId, bal);
+          await tx.query(`insert into inventory_stockmovement (date, transaction_type, reference_type, reference_id, reference_number, quantity_in, quantity_out, running_balance, unit_cost, notes, created_at, created_by_id, product_id)
+            select $1, 'SALE', 'sale', $2, $3, 0, $4, $5, purchase_price, $6, now(), $7, id from products_product where id = $8`,
+            [date, sale.id, number, toDec(l.q3, 3), toDec(bal, 3), `Sale to ${customerName}`, ADMIN_ID, l.productId]);
+        }
+        let receipt = null;
+        if ($('#s-paid').checked && t.total > 0n) receipt = await createReceipt(tx, { customerId, date, amount: t.total, method: 'CASH', notes: `Paid against ${number}`, onlySaleId: sale.id });
+        return { number, receipt };
+      });
+      $('#s-msg').innerHTML = `<div class="msg ok">✓ Sale ${esc(out.number)} created: NPR ${money(t.total)}${out.receipt ? ` · receipt ${esc(out.receipt.number)} recorded` : ''}. Stock and receivables are updated.</div>`;
+      const fresh = await q(stockSql); products.splice(0, products.length, ...fresh);
+      rows = [{ product: '', quantity: '1', price: '', discType: '', discValue: '' }]; $('#s-paid').checked = false;
+      const keep = $('#s-msg').innerHTML; renderRows(); $('#s-msg').innerHTML = keep;
+    } catch (e) {
+      $('#s-msg').innerHTML = `<div class="msg err">✕ ${esc(e.message)}</div>`;
+    } finally { btn.disabled = false; }
+  };
+};
+
+views.receipt = async () => {
+  const customers = await q(`select p.id::int id, p.name, coalesce(sum(s.total_amount - s.amount_paid) filter (where s.status='ACTIVE'), 0)::text due
+    from parties_party p left join sales_sale s on s.customer_id = p.id where p.type='CUSTOMER' and p.is_active group by p.id order by p.name`);
+  view.innerHTML = `
+    <div class="page-head"><div><h2>Receive payment</h2><p>The receipt is allocated to the oldest-due open invoices first. Anything left over is kept as an advance and is never shown as overdue.</p></div></div>
+    <div class="grid-2"><div class="panel panel-body stack">
+      <div class="row">
+        <label class="field">Customer<select id="r-customer">${customers.map(c => `<option value="${c.id}">${esc(c.name)} · owes ${money(c.due)}</option>`).join('')}</select></label>
+        <label class="field">Date<input id="r-date" type="date" value="${TODAY}"></label>
+      </div>
+      <div class="row">
+        <label class="field">Amount (NPR)<input id="r-amount" class="numin" inputmode="decimal" value="10000"></label>
+        <label class="field">Method<select id="r-method"><option value="CASH">Cash</option><option value="BANK">Bank</option><option value="CHEQUE">Cheque</option><option value="ONLINE">Online Transfer</option></select></label>
+        <label class="field">Reference<input id="r-ref" maxlength="60"></label>
+      </div>
+      <div><button class="btn primary" id="r-save">Record receipt</button></div>
+      <div id="r-msg"></div>
+    </div>
+    <div class="panel" id="r-open"></div></div>`;
+  const loadOpen = async () => {
+    const rows = await q(`select invoice_number, date::text, due_date::text, (total_amount - amount_paid)::text bal, payment_status
+      from sales_sale where customer_id = $1 and status='ACTIVE' and amount_paid < total_amount order by due_date, date, id`, [Number($('#r-customer').value)]);
+    $('#r-open').innerHTML = `<div class="panel-head"><h3>Open invoices (allocation order)</h3></div>` + table([{ label: 'Invoice', key: 'invoice_number' },
+      { label: 'Due', html: r => fmtDate(r.due_date) }, { label: 'Balance', num: true, html: r => money(r.bal) }, { label: 'Status', html: r => pill(r.payment_status) }], rows, { empty: 'Nothing outstanding.' });
+  };
+  $('#r-customer').onchange = loadOpen; loadOpen();
+  $('#r-save').onclick = async () => {
+    const amount = cents($('#r-amount').value);
+    if (amount === null || amount <= 0n) { $('#r-msg').innerHTML = '<div class="msg err">Enter an amount greater than zero.</div>'; return; }
+    try {
+      const out = await db.transaction(tx => createReceipt(tx, { customerId: Number($('#r-customer').value), date: $('#r-date').value, amount, method: $('#r-method').value, reference: $('#r-ref').value }));
+      $('#r-msg').innerHTML = `<div class="msg ok">✓ Receipt ${esc(out.number)} recorded. Allocated ${money(out.allocated)} to ${out.applied} invoice(s)${out.advance > 0n ? `; ${money(out.advance)} kept as an advance` : ''}.</div>`;
+      loadOpen();
+    } catch (e) { $('#r-msg').innerHTML = `<div class="msg err">✕ ${esc(e.message)}</div>`; }
+  };
+};
+
+views.aging = async () => {
+  view.innerHTML = `
+    <div class="page-head"><div><h2>Receivables aging</h2><p>Outstanding amounts bucketed by days past the due date, reconstructed for any past date from the allocations in effect then. Partially paid invoices age only on what was still owed.</p></div>
+      <label class="field">As of date<input type="date" id="a-date" value="${TODAY}"></label></div>
+    <div class="panel" id="a-table"></div>`;
+  const run = async () => {
+    const d = $('#a-date').value || TODAY;
+    const rows = await q(`
+      with alloc as (select sale_id, sum(amount) s from receivables_customerreceiptallocation
+                     where date <= $1::date and (is_active or voided_at::date > $1::date) group by sale_id),
+      docs as (select s.customer_id, s.due_date, s.total_amount - coalesce(a.s, 0) o from sales_sale s left join alloc a on a.sale_id = s.id
+               where s.date <= $1::date and not (s.status = 'CANCELLED' and s.cancelled_at::date <= $1::date)),
+      ralloc as (select receipt_id, sum(amount) s from receivables_customerreceiptallocation
+                 where date <= $1::date and (is_active or voided_at::date > $1::date) group by receipt_id),
+      adv as (select r.customer_id, sum(r.amount - coalesce(ra.s, 0)) a from receivables_customerreceipt r left join ralloc ra on ra.receipt_id = r.id
+              where r.date <= $1::date and not (r.status = 'CANCELLED' and r.cancelled_at::date <= $1::date) group by r.customer_id)
+      select p.name,
+        coalesce(sum(o) filter (where due_date >= $1::date), 0)::text b0,
+        coalesce(sum(o) filter (where $1::date - due_date between 1 and 30), 0)::text b1,
+        coalesce(sum(o) filter (where $1::date - due_date between 31 and 60), 0)::text b2,
+        coalesce(sum(o) filter (where $1::date - due_date between 61 and 90), 0)::text b3,
+        coalesce(sum(o) filter (where $1::date - due_date between 91 and 120), 0)::text b4,
+        coalesce(sum(o) filter (where $1::date - due_date > 120), 0)::text b5,
+        coalesce(sum(o), 0)::text total, coalesce(max(adv.a), 0)::text adv
+      from parties_party p left join docs on docs.customer_id = p.id and docs.o > 0 left join adv on adv.customer_id = p.id
+      where p.type = 'CUSTOMER' group by p.name having coalesce(sum(o), 0) > 0 or coalesce(max(adv.a), 0) > 0 order by p.name`, [d]);
+    const keys = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'total', 'adv']; const sum = {};
+    for (const k of keys) sum[k] = money(rows.reduce((s, r) => s + cents(r[k]), 0n));
+    const col = (label, key) => ({ label, key, num: true, html: r => money(r[key], true) });
+    $('#a-table').innerHTML = table([{ label: 'Customer', key: 'name' }, col('Current', 'b0'), col('1–30', 'b1'), col('31–60', 'b2'), col('61–90', 'b3'),
+      col('91–120', 'b4'), col('120+', 'b5'), { label: 'Total', key: 'total', num: true, html: r => `<b>${money(r.total)}</b>` }, col('Advances', 'adv')], rows,
+      { foot: { name: 'TOTAL', ...sum }, empty: 'Nothing was outstanding on this date.' });
+  };
+  $('#a-date').onchange = run; run();
+};
+
+views.ledger = async () => {
+  const customers = await q(`select id::int id, name from parties_party where type='CUSTOMER' order by name`);
+  view.innerHTML = `
+    <div class="page-head"><div><h2>Customer ledger</h2><p>Derived from invoices and receipts; no balance is stored anywhere. Debit is what the customer owes, credit is what they paid.</p></div>
+      <label class="field">Customer<select id="l-customer">${customers.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label></div>
+    <div class="panel" id="l-table"></div>`;
+  const run = async () => {
+    const rows = await q(`
+      with e as (
+        select date, created_at o, invoice_number ref, 'Invoice' typ, total_amount debit, 0::numeric credit, due_date, payment_status from sales_sale where customer_id = $1
+        union all select cancelled_at::date, cancelled_at, invoice_number, 'Invoice cancellation', 0, total_amount, null, null from sales_sale where customer_id = $1 and status = 'CANCELLED'
+        union all select date, created_at, receipt_number, 'Receipt', 0, amount, null, null from receivables_customerreceipt where customer_id = $1
+        union all select cancelled_at::date, cancelled_at, receipt_number, 'Receipt cancellation', amount, 0, null, null from receivables_customerreceipt where customer_id = $1 and status = 'CANCELLED')
+      select date::text, ref, typ, debit::text, credit::text, due_date::text, payment_status,
+             sum(debit - credit) over (order by date, o rows unbounded preceding)::text balance
+      from e order by date, o`, [Number($('#l-customer').value)]);
+    const td = rows.reduce((s, r) => s + cents(r.debit), 0n), tc = rows.reduce((s, r) => s + cents(r.credit), 0n);
+    $('#l-table').innerHTML = table([{ label: 'Date', html: r => fmtDate(r.date) }, { label: 'Reference', key: 'ref' }, { label: 'Type', key: 'typ' },
+      { label: 'Debit', key: 'debit', num: true, html: r => money(r.debit, true) }, { label: 'Credit', key: 'credit', num: true, html: r => money(r.credit, true) },
+      { label: 'Balance', key: 'balance', num: true, html: r => `<b>${money(r.balance)}</b>` }, { label: 'Due', html: r => fmtDate(r.due_date) }, { label: 'Status', html: r => pill(r.payment_status) }],
+      rows, { foot: { typ: 'Closing balance', debit: money(td), credit: money(tc), balance: money(td - tc) } });
+  };
+  $('#l-customer').onchange = run; run();
+};
+
+const EXAMPLES = [
+  ['Top customers', `select p.name, count(*) invoices, sum(s.total_amount) sales, sum(s.total_amount - s.amount_paid) outstanding\nfrom sales_sale s join parties_party p on p.id = s.customer_id\nwhere s.status = 'ACTIVE'\ngroup by p.name order by sales desc;`],
+  ['Best sellers', `select p.name, sum(i.quantity) qty, sum(i.taxable_amount) net_sales\nfrom sales_saleitem i join products_product p on p.id = i.product_id\ngroup by p.name order by net_sales desc limit 10;`],
+  ['Monthly VAT', `select to_char(date, 'YYYY-MM') month, sum(taxable_amount) taxable, sum(tax_amount) vat\nfrom sales_sale where status = 'ACTIVE' group by 1 order by 1;`],
+  ['Stock ledger', `select m.date, p.name, m.transaction_type, m.reference_number, m.quantity_in, m.quantity_out, m.running_balance\nfrom inventory_stockmovement m join products_product p on p.id = m.product_id\norder by m.id desc limit 25;`],
+  ['Try to edit history', `-- The stock ledger is append-only; this is refused by a trigger:\nupdate inventory_stockmovement set quantity_in = 999 where id = 1;`],
+  ['Tables', `select table_name from information_schema.tables where table_schema = 'public' order by 1;`]
+];
+
+views.sql = async () => {
+  view.innerHTML = `
+    <div class="page-head"><div><h2>SQL console</h2><p>Run any PostgreSQL query against this demo database. It is your private copy inside this tab; reload the page to start over.</p></div></div>
+    <div class="panel console"><div class="panel-body stack">
+      <div class="chips">${EXAMPLES.map(([n], i) => `<button class="btn small" data-ex="${i}">${esc(n)}</button>`).join('')}</div>
+      <textarea id="sql-in" spellcheck="false" aria-label="SQL query">${esc(EXAMPLES[0][1])}</textarea>
+      <div class="row" style="align-items:center"><div style="flex:0 0 auto"><button class="btn primary" id="sql-run">Run (Ctrl+Enter)</button></div><div class="note" id="sql-info"></div></div>
+    </div><div id="sql-out"></div></div>`;
+  const run = async () => {
+    const t0 = performance.now();
+    try {
+      const results = await db.exec($('#sql-in').value);
+      const last = results[results.length - 1] || { rows: [], fields: [] };
+      $('#sql-info').textContent = `${last.rows.length} row(s) · ${(performance.now() - t0).toFixed(0)} ms`;
+      const cols = (last.fields || []).map(f => f.name);
+      $('#sql-out').innerHTML = cols.length ? table(cols.map(c => ({ label: c, html: r => { const v = r[c]; return v === null ? '<span class="note">null</span>' : esc(v instanceof Date ? v.toISOString().slice(0, 10) : typeof v === 'object' ? JSON.stringify(v) : v); } })), last.rows)
+        : `<div class="panel-body msg ok">Statement executed${last.affectedRows !== undefined ? ` (${last.affectedRows} row(s) affected)` : ''}.</div>`;
+    } catch (e) {
+      $('#sql-info').textContent = '';
+      $('#sql-out').innerHTML = `<div class="panel-body"><div class="msg err">${esc(e.message)}</div></div>`;
+    }
+  };
+  $('#sql-run').onclick = run;
+  $('#sql-in').addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); } });
+  view.querySelectorAll('[data-ex]').forEach(b => b.onclick = () => { $('#sql-in').value = EXAMPLES[Number(b.dataset.ex)][1]; run(); });
+  run();
+};
+
+boot().catch(err => {
+  statusEl.classList.add('err');
+  statusText.textContent = 'Could not start the database';
+  $('#loading').innerHTML = `<div class="msg err" style="max-width:60ch">The in-browser PostgreSQL could not start: ${esc(err.message)}. Try reloading the page in a current Chrome, Edge, Firefox or Safari.</div>`;
+});
+</script>
