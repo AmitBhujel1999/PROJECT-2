@@ -107,20 +107,106 @@ if ($pgService -and $pgService.Status -ne 'Running') {
 }
 
 # ---------------------------------------------------------------------------
+# PostgreSQL superuser login helpers
+# ---------------------------------------------------------------------------
+function Test-PgLogin([string]$password) {
+    # Returns $null on success, otherwise psql's error text.
+    $env:PGPASSWORD = $password
+    $out = & $psql -h 127.0.0.1 -U postgres -d postgres -w -tAc "SELECT 1" 2>&1
+    $code = $LASTEXITCODE
+    Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
+    if ($code -eq 0) { return $null }
+    return (($out | ForEach-Object { "$_" }) -join ' ').Trim()
+}
+
+function Read-PgPassword([string]$prompt) {
+    $secure = Read-Host $prompt -AsSecureString
+    return (New-Object System.Net.NetworkCredential('', $secure)).Password
+}
+
+function Test-IsAdmin {
+    $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+    return ([Security.Principal.WindowsPrincipal]$id).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Reset-PgPassword {
+    # Temporarily trusts local connections for 'postgres', sets a new random
+    # password, then restores the original pg_hba.conf. Needs Administrator.
+    if (-not (Test-IsAdmin)) {
+        Fail ("Resetting the PostgreSQL password needs Administrator rights. Right-click PowerShell, choose " +
+              "'Run as administrator', go to this folder (cd `"$Root`") and run the script again.")
+    }
+    $svc = Get-CimInstance Win32_Service | Where-Object { $_.Name -like 'postgresql*' } | Select-Object -First 1
+    if (-not $svc) { Fail "Could not find the PostgreSQL Windows service to reset its password." }
+    if ($svc.PathName -notmatch '-D\s+"?([^"]+?)"?(\s+-|\s*$)') { Fail "Could not find the PostgreSQL data folder from service $($svc.Name)." }
+    $hba = Join-Path $Matches[1].Trim() 'pg_hba.conf'
+    if (-not (Test-Path $hba)) { Fail "pg_hba.conf not found at $hba" }
+
+    Say "Resetting the password of the PostgreSQL 'postgres' user..."
+    $backup = "$hba.accounting-backup"
+    Copy-Item $hba $backup -Force
+    $newPassword = New-Secret 20
+    try {
+        $trust = "host all postgres 127.0.0.1/32 trust`r`nhost all postgres ::1/128 trust`r`n"
+        [System.IO.File]::WriteAllText($hba, $trust + [System.IO.File]::ReadAllText($backup))
+        Restart-Service $svc.Name -Force -ErrorAction Stop
+        Start-Sleep -Seconds 3
+        & $psql -h 127.0.0.1 -U postgres -d postgres -w -qc "ALTER USER postgres WITH PASSWORD '$newPassword'"
+        if ($LASTEXITCODE -ne 0) { throw "ALTER USER failed" }
+    } catch {
+        Copy-Item $backup $hba -Force
+        Restart-Service $svc.Name -Force -ErrorAction SilentlyContinue
+        Fail "Password reset failed: $_"
+    }
+    Copy-Item $backup $hba -Force
+    Remove-Item $backup -Force
+    Restart-Service $svc.Name -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 3
+    Write-Host "PostgreSQL 'postgres' password was reset (saved in .local\setup-secrets.txt)." -ForegroundColor Yellow
+    return $newPassword
+}
+
+function Get-PgSuperuserPassword($secrets) {
+    $password = $secrets['PG_SUPERUSER_PASSWORD']
+    if (-not $password) {
+        $password = Read-PgPassword "Enter the password of the PostgreSQL 'postgres' user (set when PostgreSQL was installed)"
+    }
+    # Wait for the service to accept connections (right after installation it can take a while).
+    for ($i = 0; $i -lt 30; $i++) {
+        $err = Test-PgLogin $password
+        if (-not $err) { return $password }
+        if ($err -match 'password authentication failed|no password supplied|authentication failed') { break }
+        if ($err -notmatch 'could not connect|Connection refused|connection to server|the database system is starting up|timeout') { break }
+        if ($i -eq 0) { Say "Waiting for PostgreSQL to accept connections..." }
+        Start-Sleep -Seconds 2
+    }
+    if ($err -notmatch 'authentication failed|no password supplied') {
+        Fail "PostgreSQL is not accepting connections on 127.0.0.1:5432.`nDetails: $err`nOpen 'services.msc', find the 'postgresql' service and start it, then run this script again."
+    }
+    # Wrong password: let the user retry or reset it.
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        Write-Host "PostgreSQL rejected the password for 'postgres'. ($err)" -ForegroundColor Yellow
+        $password = Read-PgPassword "Type the correct 'postgres' password, or just press Enter to reset it automatically"
+        if (-not $password) { return (Reset-PgPassword) }
+        $err = Test-PgLogin $password
+        if (-not $err) { return $password }
+    }
+    Fail "Could not log in to PostgreSQL as 'postgres'. Run the script again and press Enter at the password prompt to reset it."
+}
+
+# ---------------------------------------------------------------------------
 # 2. Database and backend configuration (first run only)
 # ---------------------------------------------------------------------------
 if (-not (Test-Path $BackendEnv)) {
-    if (-not $secrets['PG_SUPERUSER_PASSWORD']) {
-        $secure = Read-Host "Enter the password of the PostgreSQL 'postgres' user (set when PostgreSQL was installed)" -AsSecureString
-        $secrets['PG_SUPERUSER_PASSWORD'] = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
-    }
+    $secrets['PG_SUPERUSER_PASSWORD'] = Get-PgSuperuserPassword $secrets
+    Save-Secrets $secrets
     $dbPass    = New-Secret 24
     $adminPass = 'Admin-' + (New-Secret 10)
 
     Say "Creating database 'accounting'..."
     $env:PGPASSWORD = $secrets['PG_SUPERUSER_PASSWORD']
     $exists = & $psql -h 127.0.0.1 -U postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='accounting'"
-    if ($LASTEXITCODE -ne 0) { Remove-Item Env:PGPASSWORD; Fail "Could not connect to PostgreSQL as 'postgres'. Check the password and that the service is running." }
+    if ($LASTEXITCODE -ne 0) { Remove-Item Env:PGPASSWORD; Fail "Could not query PostgreSQL as 'postgres'." }
     if ($exists -match '1') {
         & $psql -h 127.0.0.1 -U postgres -qc "ALTER ROLE accounting WITH LOGIN PASSWORD '$dbPass' CREATEDB" | Out-Null
     } else {
