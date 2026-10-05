@@ -54,6 +54,7 @@ class DocumentSequence(models.Model):
     RECEIPT = "customer_receipt"
     PAYMENT = "vendor_payment"
     ADJUSTMENT = "stock_adjustment"
+    EXPENSE = "expense"
 
     DEFAULTS = {
         SALE: "INV",
@@ -61,6 +62,7 @@ class DocumentSequence(models.Model):
         RECEIPT: "RCPT",
         PAYMENT: "PAY",
         ADJUSTMENT: "ADJ",
+        EXPENSE: "EXP",
     }
 
     def __str__(self):

@@ -7,6 +7,7 @@ urlpatterns = [
     path("search/", views.GlobalSearchView.as_view(), name="global-search"),
     path("reports/sales/", views.SalesReportView.as_view(), name="report-sales"),
     path("reports/purchases/", views.PurchaseReportView.as_view(), name="report-purchases"),
+    path("reports/expenses/", views.ExpenseReportView.as_view(), name="report-expenses"),
     path("reports/stock/", views.StockReportView.as_view(), name="report-stock"),
     path("reports/stock-ledger/", views.StockLedgerReportView.as_view(), name="report-stock-ledger"),
     path("reports/receivables/", views.ReceivablesReportView.as_view(), name="report-receivables"),

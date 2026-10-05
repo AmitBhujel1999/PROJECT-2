@@ -62,6 +62,11 @@ Common error codes: `VALIDATION_ERROR`, `AUTHENTICATION_REQUIRED` (401),
 | GET/POST | `customer-receipts/`, `vendor-payments/` | create with `allocations: [{document, amount}]` or `auto_allocate: true` |
 | POST | `…/{id}/allocate/`, `…/{id}/auto-allocate/`, `…/{id}/unallocate/`, `…/{id}/cancel/` | |
 | GET | `…/{id}/pdf/`, `…/open-documents/?party=` | |
+| GET/POST | `expenses/` | filters: start_date, end_date, category, vendor, payment_method, status, search |
+| GET | `expenses/{id}/`, `expenses/{id}/pdf/` | detail; printable expense voucher |
+| POST | `expenses/calculate/` | `{amount, tax_rate}` → tax and total preview (nothing saved) |
+| POST | `expenses/{id}/cancel/` | `{reason}` — expenses are never edited or deleted |
+| GET/POST/PATCH/DELETE | `expense-categories/` | `is_active`, search; DELETE only when unused; `…/{id}/activate/`, `…/{id}/deactivate/` |
 
 Sale/purchase create body:
 
@@ -97,8 +102,9 @@ Sale/purchase create body:
 | Path | Notes |
 |---|---|
 | `reports/sales/`, `reports/purchases/` | start_date, end_date, party, number, payment_status, status (ACTIVE/CANCELLED/ALL), search |
+| `reports/expenses/` | start_date, end_date, category, vendor, payment_method, status, search; summary includes `by_category` |
 | `reports/stock/`, `reports/stock-ledger/` | same filters as inventory endpoints |
 | `reports/receivables/`, `reports/payables/` | open documents as_of, party, overdue |
 | `reports/receivables-aging/`, `reports/payables-aging/` | as_of, party, search |
 | `dashboard/` | start_date, end_date |
-| `search/?q=` | grouped results; `&type=products|customers|vendors|invoices|bills|receipts|payments` paginates one type |
+| `search/?q=` | grouped results; `&type=products|customers|vendors|invoices|bills|receipts|payments|expenses` paginates one type |

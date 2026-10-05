@@ -293,3 +293,41 @@ export interface StockLedgerRow {
 	notes: string;
 	created_by: string | null;
 }
+
+export interface ExpenseCategory {
+	id: number;
+	name: string;
+	description: string;
+	is_active: boolean;
+	expense_count: number | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface Expense {
+	id: number;
+	expense_number: string;
+	date: string;
+	category: number;
+	category_name: string;
+	vendor: number | null;
+	vendor_name: string | null;
+	payee: string;
+	paid_to: string;
+	description: string;
+	amount: Money;
+	tax_rate: string;
+	tax_amount: Money;
+	total_amount: Money;
+	payment_method: string;
+	payment_method_display: string;
+	reference_number: string;
+	status: DocStatus;
+	created_at: string;
+	notes?: string;
+	created_by_name?: string | null;
+	cancelled_at?: string | null;
+	cancelled_by_name?: string | null;
+	cancel_reason?: string;
+	updated_at?: string;
+}

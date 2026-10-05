@@ -42,6 +42,11 @@ PERMISSION_MATRIX: dict[str, set[str]] = {
     "payments.create": FINANCE,
     "payments.cancel": MGMT,
     "ledgers.view": FINANCE,
+    # Expenses
+    "expenses.view": FINANCE,
+    "expenses.create": FINANCE,
+    "expenses.cancel": MGMT,
+    "expenses.manage_categories": MGMT,
     # Inventory
     "inventory.view": ALL,
     "inventory.adjust": MGMT,
@@ -56,8 +61,8 @@ PERMISSION_MATRIX: dict[str, set[str]] = {
 
 ROLE_DESCRIPTIONS = {
     Role.ADMIN: "Full access including users, roles and business settings.",
-    Role.MANAGER: "All transactions, cancellations, stock adjustments, products, reports and audit log.",
-    Role.ACCOUNTANT: "Sales, purchases, receipts, payments, ledgers, aging and reports.",
+    Role.MANAGER: "All transactions, cancellations, expense categories, stock adjustments, products, reports and audit log.",
+    Role.ACCOUNTANT: "Sales, purchases, receipts, payments, expenses, ledgers, aging and reports.",
     Role.STAFF: "Day-to-day sales entry, product/party lookup and stock view.",
 }
 

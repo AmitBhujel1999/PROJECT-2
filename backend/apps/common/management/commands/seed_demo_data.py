@@ -2,7 +2,7 @@
 
 Creates demo users for every role, 10 products, 5 customers, 5 vendors and a
 few months of purchases, sales (with item and invoice discounts), receipts,
-vendor payments, advances and stock adjustments, spread over time so the
+vendor payments, advances, expenses and stock adjustments, spread over time so the
 aging buckets are populated. All documents go through the real service layer
 so stock ledgers, allocations and audit logs are consistent.
 """
@@ -16,6 +16,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.common.models import BusinessSettings
+from apps.expenses.services import create_expense, ensure_default_categories
 from apps.inventory.services import available_on, calculate_stock, create_stock_adjustment
 from apps.parties.models import CreditTerms, Party, PartyType
 from apps.payables.services import create_vendor_payment
@@ -236,6 +237,39 @@ class Command(BaseCommand):
         create_vendor_payment(vendor_id=vendors[3].pk, date=today - dt.timedelta(days=5), amount=Decimal("20000"),
                               payment_method="BANK", reference_number="ADV-V-01", notes="Advance for next shipment",
                               user=accountant)
+
+        # Expenses: monthly rent, salaries and utilities plus smaller day-to-day costs.
+        categories = ensure_default_categories()
+        month = start.replace(day=1)
+        while month <= today:
+            for name, description, amount, method, day_of_month in [
+                ("Rent", "Shop and warehouse rent", "45000", "BANK", 1),
+                ("Salaries & Wages", "Staff salaries", "120000", "BANK", 28),
+                ("Utilities", "Electricity and internet", str(rng.randint(6000, 9500)), "ONLINE", 10),
+            ]:
+                day = month.replace(day=day_of_month)
+                if start <= day <= today:
+                    create_expense(data={"date": day, "category": categories[name].pk, "description": description,
+                                         "amount": Decimal(amount), "payment_method": method,
+                                         "payee": "Landlord" if name == "Rent" else ""}, user=accountant)
+            month = (month.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
+        day = start + dt.timedelta(days=3)
+        while day <= today:
+            name, description, low, high, tax = rng.choice([
+                ("Transport & Fuel", "Delivery van fuel", 1500, 4500, 0),
+                ("Office Supplies", "Stationery and printer paper", 800, 3000, 13),
+                ("Repairs & Maintenance", "Equipment repair", 2000, 8000, 13),
+                ("Marketing & Advertising", "Social media promotion", 3000, 10000, 13),
+                ("Bank Charges", "Bank service charges", 100, 600, 0),
+            ])
+            create_expense(
+                data={"date": day, "category": categories[name].pk, "description": description,
+                      "amount": Decimal(rng.randint(low, high)), "tax_rate": Decimal(tax),
+                      "vendor": rng.choice(vendors).pk if name == "Repairs & Maintenance" else None,
+                      "payment_method": rng.choice(["CASH", "CASH", "ONLINE"]), "notes": "Demo expense"},
+                user=rng.choice([manager, accountant]),
+            )
+            day += dt.timedelta(days=rng.randint(4, 9))
 
         # Stock adjustments.
         create_stock_adjustment(product_id=products[1].pk, quantity=Decimal("-2"), reason="DAMAGED",

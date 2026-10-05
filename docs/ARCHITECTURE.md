@@ -34,6 +34,7 @@ backend/
     sales/           Sale, SaleItem, create/cancel services
     receivables/     CustomerReceipt, CustomerReceiptAllocation, RECEIVABLE config
     payables/        VendorPayment, VendorPaymentAllocation, PAYABLE config
+    expenses/        ExpenseCategory, Expense (EXP numbering, cancel-only) + services
     reports/         reports, dashboard, global search, CSV/PDF exporters, document PDFs
   tests/             pytest suite (runs on PostgreSQL)
 ```
@@ -74,6 +75,8 @@ Decimals are always serialised as strings. Lists are paginated server-side
 | `inventory_stockmovement` | product, date, transaction_type, reference type/id/number, quantity_in/out (exactly one > 0), `running_balance` (CHECK ≥ 0), unit_cost, created_by; UPDATE/DELETE blocked by trigger |
 | `inventory_stockadjustment` | `adjustment_number` UNIQUE, product, date, signed quantity (≠ 0), reason, notes, stock before/after, created_by |
 | `receivables_customerreceipt` / `payables_vendorpayment` | `receipt_number` / `payment_number` UNIQUE, party, date, amount (> 0), `allocated_amount` (CHECK ≤ amount), method, reference, status, cancel metadata |
+| `expenses_expensecategory` | name (case-insensitive UNIQUE), description, `is_active` |
+| `expenses_expense` | `expense_number` UNIQUE, date, category FK (PROTECT), optional vendor FK (PROTECT) or free-text payee, description, amount (> 0, excl. tax), tax_rate (0–100), tax, total (CHECK = amount + tax), method, reference, status, cancel metadata |
 | `…_allocation` | payment FK, document FK, amount (> 0), effective `date`, `is_active`, `voided_at/by/reason` |
 | `common_documentsequence` | per document type `prefix`, `last_number` (row-locked counter) |
 | `common_businesssettings` | singleton: name, address, PAN/VAT, currency, tax label, default tax rate |
@@ -81,7 +84,8 @@ Decimals are always serialised as strings. Lists are paginated server-side
 
 Migrations live in each app's `migrations/` folder. Notable hand-written
 migrations: `common/0002` seeds document sequences and the settings row;
-`inventory/0002` installs the immutability trigger. See OPERATIONS.md for the
+`inventory/0002` installs the immutability trigger; `expenses/0002` seeds the
+`EXP` sequence and default expense categories. See OPERATIONS.md for the
 migration workflow.
 
 ## 4. Discount & tax calculation

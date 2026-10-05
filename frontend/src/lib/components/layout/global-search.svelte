@@ -25,7 +25,8 @@
 		invoices: 'Sales invoices',
 		bills: 'Purchase bills',
 		receipts: 'Receipts',
-		payments: 'Vendor payments'
+		payments: 'Vendor payments',
+		expenses: 'Expenses'
 	};
 
 	let q = $state('');

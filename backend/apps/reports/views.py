@@ -21,6 +21,7 @@ from apps.common.money import money
 from apps.common.pagination import StandardPagination, paginate_list
 from apps.common.responses import ok
 from apps.common.utils import parse_date_param, parse_int_param
+from apps.expenses.models import Expense
 from apps.inventory.selectors import StockStatus, ledger_row, stock_register
 from apps.inventory.views import ledger_queryset, register_queryset
 from apps.parties.models import Party, PartyType
@@ -204,6 +205,125 @@ class PurchaseReportView(TradeReportView):
     number_label = "Bill #"
     title = "Purchase Report"
     base_name = "purchase-report"
+
+
+# ---------------------------------------------------------------------------
+# Expense report
+# ---------------------------------------------------------------------------
+EXPENSE_COLUMNS = [
+    Column("date", "Date"),
+    Column("number", "Expense #"),
+    Column("category_name", "Category", width=1.4),
+    Column("description", "Description", width=2.2),
+    Column("paid_to", "Paid To", width=1.5),
+    Column("payment_method", "Method", width=0.8),
+    Column("amount", "Amount", numeric=True),
+    Column("tax_amount", "Tax", numeric=True),
+    Column("total_amount", "Total", numeric=True),
+    Column("status", "Status", width=0.8),
+]
+
+
+class ExpenseReportView(APIView):
+    """Expenses with totals and a per-category breakdown for the same filters."""
+
+    permission_classes = [RolePermission]
+    permission_map = {"read": "reports.view"}
+
+    def queryset(self, request):
+        qs = Expense.objects.select_related("category", "vendor")
+        start = parse_date_param(request, "start_date")
+        end = parse_date_param(request, "end_date")
+        if start:
+            qs = qs.filter(date__gte=start)
+        if end:
+            qs = qs.filter(date__lte=end)
+        category = parse_int_param(request, "category")
+        if category:
+            qs = qs.filter(category_id=category)
+        vendor = parse_int_param(request, "vendor")
+        if vendor:
+            qs = qs.filter(vendor_id=vendor)
+        method = request.query_params.get("payment_method")
+        if method:
+            qs = qs.filter(payment_method=method)
+        doc_status = request.query_params.get("status", DocumentStatus.ACTIVE)
+        if doc_status != "ALL":
+            qs = qs.filter(status=doc_status)
+        search = request.query_params.get("search")
+        if search:
+            qs = qs.filter(
+                Q(expense_number__icontains=search) | Q(description__icontains=search) | Q(payee__icontains=search)
+                | Q(vendor__name__icontains=search) | Q(reference_number__icontains=search)
+            )
+        return qs, start, end
+
+    def summary(self, qs) -> dict:
+        agg = qs.aggregate(
+            count=Count("id"),
+            amount=Coalesce(Sum("amount"), MZERO),
+            tax=Coalesce(Sum("tax_amount"), MZERO),
+            total=Coalesce(Sum("total_amount"), MZERO),
+        )
+        by_category = [
+            {"category_id": r["category_id"], "category_name": r["category__name"], "count": r["count"],
+             "amount": money(r["amount"]), "tax_amount": money(r["tax"]), "total_amount": money(r["total"])}
+            for r in qs.order_by().values("category_id", "category__name")
+            .annotate(count=Count("id"), amount=Sum("amount"), tax=Sum("tax_amount"), total=Sum("total_amount"))
+            .order_by("-total", "category__name")
+        ]
+        return {
+            "total_expenses": agg["count"],
+            "amount": money(agg["amount"]),
+            "tax_amount": money(agg["tax"]),
+            "total_amount": money(agg["total"]),
+            "by_category": by_category,
+        }
+
+    @staticmethod
+    def row(e) -> dict:
+        return {
+            "id": e.pk,
+            "date": e.date,
+            "number": e.expense_number,
+            "category_id": e.category_id,
+            "category_name": e.category.name,
+            "description": e.description,
+            "paid_to": e.paid_to,
+            "payment_method": e.get_payment_method_display(),
+            "amount": e.amount,
+            "tax_amount": e.tax_amount,
+            "total_amount": e.total_amount,
+            "status": e.status,
+        }
+
+    def get(self, request):
+        qs, start, end = self.queryset(request)
+        summary = self.summary(qs)
+        qs = qs.order_by("-date", "-id")
+        if request.query_params.get("export"):
+            rows = [self.row(e) for e in qs[:EXPORT_LIMIT]]
+            totals = {
+                "description": "TOTAL",
+                "amount": summary["amount"],
+                "tax_amount": summary["tax_amount"],
+                "total_amount": summary["total_amount"],
+            }
+            response = export_response(
+                request, base_name="expense-report", title="Expense Report", columns=EXPENSE_COLUMNS, rows=rows,
+                meta=_meta_dates(start, end), totals=totals,
+                summary=[
+                    ("Expenses", str(summary["total_expenses"])),
+                    ("Amount", f"{summary['amount']:,.2f}"),
+                    ("Tax", f"{summary['tax_amount']:,.2f}"),
+                    ("Total", f"{summary['total_amount']:,.2f}"),
+                ] + [(c["category_name"], f"{c['total_amount']:,.2f}") for c in summary["by_category"][:4]],
+            )
+            if response:
+                return response
+        paginator = StandardPagination()
+        page = paginator.paginate_queryset(qs, request, view=self)
+        return paginator.get_paginated_response([self.row(e) for e in page], extra={"summary": summary})
 
 
 # ---------------------------------------------------------------------------
@@ -500,6 +620,11 @@ class DashboardView(APIView):
             "total_customers": Party.objects.filter(type=PartyType.CUSTOMER, is_active=True).count(),
             "total_vendors": Party.objects.filter(type=PartyType.VENDOR, is_active=True).count(),
         }
+        if has_perm(user, "expenses.view"):
+            cards.update(
+                todays_expenses=day_total(Expense, "total_amount", today),
+                period_expenses=period_total(Expense, "total_amount"),
+            )
         if finance:
             rec = engine.totals_overview(RECEIVABLE)
             pay = engine.totals_overview(PAYABLE)
@@ -528,6 +653,7 @@ class DashboardView(APIView):
                 cursor += dt.timedelta(days=1)
         sales_s, purchase_s = series(Sale, "total_amount"), series(Purchase, "total_amount")
         receipt_s, payment_s = series(CustomerReceipt, "amount"), series(VendorPayment, "amount")
+        expense_s = series(Expense, "total_amount")
         trend = [
             {
                 "date": d,
@@ -535,6 +661,7 @@ class DashboardView(APIView):
                 "purchases": money(purchase_s.get(d, 0)),
                 "receipts": money(receipt_s.get(d, 0)),
                 "payments": money(payment_s.get(d, 0)),
+                "expenses": money(expense_s.get(d, 0)),
             }
             for d in labels
         ]
@@ -574,7 +701,7 @@ class DashboardView(APIView):
 # Global search
 # ---------------------------------------------------------------------------
 class GlobalSearchView(APIView):
-    """Search products, customers, vendors, invoices, bills, receipts and payments.
+    """Search products, customers, vendors, invoices, bills, receipts, payments and expenses.
 
     ``?q=`` searches all types (top 5 each). ``?q=&type=<type>`` returns one
     type with full server-side pagination.
@@ -629,6 +756,14 @@ class GlobalSearchView(APIView):
                     Q(payment_number__icontains=q) | Q(reference_number__icontains=q) | Q(vendor__name__icontains=q)
                 ).order_by("-date", "-id"),
                 lambda r: {"id": r.pk, "title": r.payment_number, "subtitle": f"{r.vendor.name} · {r.date} · {r.amount}", "url": f"/payments/{r.pk}"},
+            ),
+            "expenses": (
+                "expenses.view",
+                Expense.objects.select_related("category", "vendor").filter(
+                    Q(expense_number__icontains=q) | Q(description__icontains=q) | Q(payee__icontains=q)
+                    | Q(reference_number__icontains=q) | Q(vendor__name__icontains=q)
+                ).order_by("-date", "-id"),
+                lambda e: {"id": e.pk, "title": e.expense_number, "subtitle": f"{e.category.name} · {e.description} · {e.date} · {e.total_amount}", "url": f"/expenses/{e.pk}", "status": e.status},
             ),
         }
         return {k: v for k, v in sources.items() if has_perm(user, v[0])}

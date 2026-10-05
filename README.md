@@ -74,6 +74,12 @@ concurrency-safe numbering. Item-level **and** invoice-level discounts
 pay-on-save (paid / partial), Save & Print, Save & PDF, cancellation with
 reversing entries (financial records are never deleted).
 
+**Expenses** — day-to-day costs (`EXP-000001`) by category (rent, salaries,
+utilities, … — categories are editable), optional vendor or free-text payee,
+optional VAT calculated by the server, cancellation instead of deletion,
+printable expense voucher, and an expense report with a per-category
+breakdown. Expenses also appear on the dashboard and in global search.
+
 **Inventory** — products (unique SKU, soft-deactivation), immutable stock ledger
 (ORM guard + PostgreSQL trigger + `CHECK running_balance >= 0`), row-locked
 stock validation that blocks overselling (including back-dated sales that
@@ -89,7 +95,7 @@ automatic PAID / PARTIAL / UNPAID status, customer & vendor ledgers with running
 balance, statements, and **historical as-of aging** (Current, 1–30, 31–60,
 61–90, 91–120, 120+) that ages only the outstanding part of each document.
 
-**Reports** — sales, purchases, stock, stock ledger, receivables, payables,
+**Reports** — sales, purchases, expenses, stock, stock ledger, receivables, payables,
 receivables aging, payables aging, customer/vendor ledgers and statements;
 every one exports **CSV / PDF / Print** using the on-screen filters.
 
@@ -132,7 +138,7 @@ bun run dev                          # http://localhost:5173 (proxies /api to :8
 ## Testing
 
 ```bash
-cd backend && uv run pytest          # 134 tests against PostgreSQL
+cd backend && uv run pytest          # 154 tests against PostgreSQL
 cd frontend && bun run test          # unit tests (Vitest)
 cd frontend && bun run check         # svelte-check / TypeScript
 cd frontend && bun run build         # production build

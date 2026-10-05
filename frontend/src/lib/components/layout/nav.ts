@@ -4,6 +4,8 @@ import {
 	Truck,
 	HandCoins,
 	Wallet,
+	Receipt,
+	Tags,
 	Package,
 	Boxes,
 	ScrollText,
@@ -40,7 +42,9 @@ export const NAV: NavGroup[] = [
 			{ label: 'Sales', href: '/sales', icon: ShoppingCart, perm: 'sales.view' },
 			{ label: 'Purchases', href: '/purchases', icon: Truck, perm: 'purchases.view' },
 			{ label: 'Customer Receipts', href: '/receipts', icon: HandCoins, perm: 'receipts.view' },
-			{ label: 'Vendor Payments', href: '/payments', icon: Wallet, perm: 'payments.view' }
+			{ label: 'Vendor Payments', href: '/payments', icon: Wallet, perm: 'payments.view' },
+			{ label: 'Expenses', href: '/expenses', icon: Receipt, perm: 'expenses.view' },
+			{ label: 'Expense Categories', href: '/expenses/categories', icon: Tags, perm: 'expenses.view' }
 		]
 	},
 	{
@@ -80,6 +84,7 @@ export const NAV: NavGroup[] = [
 		items: [
 			{ label: 'Sales Report', href: '/reports/sales', icon: ChartColumn, perm: 'reports.view' },
 			{ label: 'Purchase Report', href: '/reports/purchases', icon: ChartColumn, perm: 'reports.view' },
+			{ label: 'Expense Report', href: '/reports/expenses', icon: ChartColumn, perm: 'reports.view' },
 			{ label: 'Stock Report', href: '/reports/stock', icon: ChartColumn, perm: 'inventory.view' },
 			{ label: 'Receivables Report', href: '/reports/receivables', icon: ChartColumn, perm: 'reports.view' },
 			{ label: 'Payables Report', href: '/reports/payables', icon: ChartColumn, perm: 'reports.view' }

@@ -6,6 +6,7 @@
 		Truck,
 		HandCoins,
 		Wallet,
+		Receipt,
 		Boxes,
 		ArrowDownToLine,
 		AlarmClock,
@@ -33,7 +34,7 @@
 		end_date: string;
 		granularity: 'day' | 'month';
 		cards: Record<string, any>;
-		trend: { date: string; sales: string; purchases: string; receipts: string; payments: string }[];
+		trend: { date: string; sales: string; purchases: string; receipts: string; payments: string; expenses: string }[];
 		top_products: { product_id: number; name: string; sku_code: string; quantity: string; amount: string }[];
 		stock_value_by_product: { product_id: number; name: string; value: string; quantity: string }[];
 		low_stock: { id: number; name: string; sku_code: string; current_stock: string; reorder_level: string; unit: string; stock_status: string }[];
@@ -84,7 +85,10 @@
 			labels,
 			datasets: [
 				{ label: 'Receipts', data: (d?.trend ?? []).map((t) => Number(t.receipts)), backgroundColor: SERIES[2], borderRadius: 3, maxBarThickness: 18 },
-				{ label: 'Payments', data: (d?.trend ?? []).map((t) => Number(t.payments)), backgroundColor: SERIES[1], borderRadius: 3, maxBarThickness: 18 }
+				{ label: 'Payments', data: (d?.trend ?? []).map((t) => Number(t.payments)), backgroundColor: SERIES[1], borderRadius: 3, maxBarThickness: 18 },
+				...(c.todays_expenses !== undefined
+					? [{ label: 'Expenses', data: (d?.trend ?? []).map((t) => Number(t.expenses)), backgroundColor: SERIES[0], borderRadius: 3, maxBarThickness: 18 }]
+					: [])
 			]
 		},
 		options: { scales }
@@ -135,6 +139,9 @@
 		<StatCard label="Today's Purchases" value={`${cur} ${money(c.todays_purchases)}`} hint={`Period: ${money(c.period_purchases)}`} icon={Truck} href="/purchases" />
 		<StatCard label="Today's Receipts" value={`${cur} ${money(c.todays_receipts)}`} hint={`Period: ${money(c.period_receipts)}`} icon={HandCoins} tone="success" />
 		<StatCard label="Today's Payments" value={`${cur} ${money(c.todays_payments)}`} hint={`Period: ${money(c.period_payments)}`} icon={Wallet} />
+		{#if c.todays_expenses !== undefined}
+			<StatCard label="Today's Expenses" value={`${cur} ${money(c.todays_expenses)}`} hint={`Period: ${money(c.period_expenses)}`} icon={Receipt} href="/expenses" />
+		{/if}
 		{#if finance}
 			<StatCard label="Receivables" value={`${cur} ${money(c.receivables)}`} hint={`Advances: ${money(c.customer_advances)}`} icon={ArrowDownToLine} href="/receivables/aging" />
 			<StatCard label="Overdue Receivables" value={`${cur} ${money(c.overdue_receivables)}`} icon={AlarmClock} tone="danger" href="/reports/receivables" />
@@ -151,8 +158,8 @@
 		<Card title="Sales vs purchase trend" description={d.granularity === 'month' ? 'Monthly totals incl. VAT' : 'Daily totals incl. VAT'}>
 			<Chart config={trendConfig} label="Line chart of sales and purchases over the selected period" />
 		</Card>
-		<Card title="Receipts vs payments" description="Cash received from customers and paid to vendors">
-			<Chart config={cashConfig} label="Bar chart of customer receipts and vendor payments" />
+		<Card title="Cash in vs cash out" description="Received from customers, paid to vendors{c.todays_expenses !== undefined ? ' and spent on expenses' : ''}">
+			<Chart config={cashConfig} label="Bar chart of customer receipts, vendor payments and expenses" />
 		</Card>
 		<Card title="Top selling products" description="By net sales (excl. VAT) in the period">
 			{#if d.top_products.length}

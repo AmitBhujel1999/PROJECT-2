@@ -162,3 +162,38 @@ def payment_pdf(payment, *, kind: str) -> bytes:
         story += [Spacer(1, 6), Paragraph(f"<b>Notes:</b> {_esc(payment.notes)}", SMALL)]
     story += [Spacer(1, 24), Paragraph(f"Printed {timezone.localtime():%d/%m/%Y %H:%M}<br/><br/>_______________________<br/>Authorised Signature", SMALL)]
     return build_pdf(story, title=f"{title} {number}")
+
+
+def expense_pdf(expense) -> bytes:
+    settings = BusinessSettings.get_solo()
+    width = A4[0] - 24 * mm
+    title = "EXPENSE VOUCHER" + (" (CANCELLED)" if expense.status == DocumentStatus.CANCELLED else "")
+    meta = [("Number", expense.expense_number), ("Date", expense.date.strftime("%d/%m/%Y")),
+            ("Method", expense.get_payment_method_display())]
+    if expense.reference_number:
+        meta.append(("Reference", expense.reference_number))
+    story = _header(settings, title, meta, width)
+    if expense.vendor_id:
+        story.append(_party_block("Paid To", expense.vendor, []))
+    elif expense.payee:
+        story.append(Paragraph(f"<b>Paid To</b><br/>{_esc(expense.payee)}", NORMAL))
+    story.append(Spacer(1, 8))
+
+    def head(text, style=CELL):
+        return Paragraph(f'<font color="white"><b>{text}</b></font>', style)
+
+    rows = [
+        [head("Category"), head("Description"), head("Amount", CELL_R)],
+        [Paragraph(_esc(expense.category.name), CELL), Paragraph(_esc(expense.description), CELL), Paragraph(m(expense.amount), CELL_R)],
+        [Paragraph("", CELL), Paragraph(f"{_esc(settings.tax_label)} @ {expense.tax_rate}%", CELL), Paragraph(m(expense.tax_amount), CELL_R)],
+        [Paragraph("", CELL), Paragraph(f"<b>Total ({_esc(settings.currency_code)})</b>", CELL), Paragraph(f"<b>{m(expense.total_amount)}</b>", CELL_R)],
+    ]
+    t = Table(rows, colWidths=[width * 0.25, width * 0.5, width * 0.25])
+    t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), HEAD_BG), ("GRID", (0, 0), (-1, -1), 0.25, GRID)]))
+    story.append(t)
+    if expense.notes:
+        story += [Spacer(1, 6), Paragraph(f"<b>Notes:</b> {_esc(expense.notes)}", SMALL)]
+    if expense.status == DocumentStatus.CANCELLED:
+        story += [Spacer(1, 6), Paragraph(f"<b>Cancelled:</b> {_esc(expense.cancel_reason)}", SMALL)]
+    story += [Spacer(1, 24), Paragraph(f"Printed {timezone.localtime():%d/%m/%Y %H:%M}<br/><br/>_______________________<br/>Authorised Signature", SMALL)]
+    return build_pdf(story, title=f"{title} {expense.expense_number}")

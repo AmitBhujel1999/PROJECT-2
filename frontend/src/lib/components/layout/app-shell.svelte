@@ -31,6 +31,7 @@
 		const path: string = page.url.pathname;
 		if (href === '/inventory') return path === '/inventory';
 		if (href === '/settings') return path === '/settings';
+		if (href === '/expenses') return path === '/expenses' || (path.startsWith('/expenses/') && !path.startsWith('/expenses/categories'));
 		return path === href || path.startsWith(href + '/');
 	}
 
