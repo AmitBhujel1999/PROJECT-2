@@ -256,6 +256,8 @@ Push-Location (Join-Path $Root 'backend')
 if ($LASTEXITCODE -ne 0) { Pop-Location; Fail "uv sync failed." }
 & uv run --no-dev python manage.py migrate --noinput
 if ($LASTEXITCODE -ne 0) { Pop-Location; Fail "Database migration failed. See the messages above." }
+& uv run --no-dev python manage.py migrate_companies
+if ($LASTEXITCODE -ne 0) { Pop-Location; Fail "Company database migration failed. See the messages above." }
 & uv run --no-dev python manage.py ensure_admin
 if ($firstRun) {
     Say "Loading demo data (first run only)..."
@@ -356,7 +358,6 @@ Write-Host "============================================================" -Foreg
 Write-Host " Accounting & Inventory is running:  $AppUrl" -ForegroundColor Green
 Write-Host " Username: admin"
 if ($adminPassword) { Write-Host " Password: $adminPassword   (also saved in .local\setup-secrets.txt)" }
-Write-Host " Demo users: demo_manager / demo_accountant / demo_staff  (password Demo@12345)"
 foreach ($ip in $LanIps) { Write-Host " On your phone (same Wi-Fi / Tailscale): http://${ip}:$AppPort" -ForegroundColor Green }
 Write-Host " Stop it:  powershell -ExecutionPolicy Bypass -File .\stop-windows.ps1"
 Write-Host " Logs:     .local\backend*.log, .local\frontend*.log"

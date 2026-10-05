@@ -40,8 +40,8 @@ class AuthState {
 		}
 	}
 
-	async login(username: string, password: string): Promise<User> {
-		const res = await api.post<User>('auth/login/', { username, password });
+	async login(username: string, password: string, company?: string): Promise<User> {
+		const res = await api.post<User>('auth/login/', { username, password, company });
 		this.user = res.data;
 		this.loadSettings();
 		return res.data;

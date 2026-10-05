@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 
 from apps.audit.models import AuditAction
 from apps.audit.services import record, snapshot
+from apps.common import companies
 from apps.common.exceptions import BusinessError
 from apps.common.responses import created, ok
 
@@ -50,7 +51,14 @@ class LoginView(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = authenticate(request, **serializer.validated_data)
+        credentials = dict(serializer.validated_data)
+        company = request.company
+        if "company" in credentials:
+            company = companies.get_company(credentials.pop("company"))
+            if company is None:
+                raise BusinessError("Unknown company.", code="UNKNOWN_COMPANY", status_code=400)
+            companies.activate(company.schema)
+        user = authenticate(request, **credentials)
         if user is None or not user.is_active:
             record(
                 AuditAction.LOGIN_FAILED,
@@ -60,7 +68,16 @@ class LoginView(APIView):
             raise BusinessError("Invalid username or password.", code="INVALID_CREDENTIALS", status_code=400)
         login(request, user)  # rotates the session key
         record(AuditAction.LOGIN, user, user=user)
-        return ok(UserSerializer(user).data, "Logged in successfully.")
+        response = ok(UserSerializer(user).data, "Logged in successfully.")
+        response.set_cookie(
+            companies.COOKIE_NAME,
+            company.slug,
+            max_age=365 * 24 * 60 * 60,
+            httponly=True,
+            samesite="Lax",
+            secure=settings.SESSION_COOKIE_SECURE,
+        )
+        return response
 
 
 class LogoutView(APIView):
