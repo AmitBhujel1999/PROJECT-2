@@ -16,7 +16,7 @@
 
 <svelte:element this={href ? 'a' : 'div'} {href} class={cn('flex items-start gap-3 rounded-xl border bg-card p-4 shadow-xs', href && 'transition-colors hover:border-primary/40')}>
 	{#if Icon}
-		<div class={cn('rounded-lg p-2', toneClass[tone])}><Icon class="size-5" /></div>
+		<div class={cn('stat-icon rounded-lg p-2', toneClass[tone])}><Icon class="size-5" /></div>
 	{/if}
 	<div class="min-w-0">
 		<p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>

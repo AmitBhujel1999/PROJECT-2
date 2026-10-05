@@ -109,6 +109,12 @@ letter, and every page except the dashboard in a window with a title bar. Keys: 
 The dashboard keeps its original layout. The status line shows the Nepali
 fiscal year (e.g. F.Y. 2083-84).
 
+**Phone layout** — below 768 px wide the app switches to a phone layout:
+bottom bar (Home, Sales, + New, Expenses, More), a "Create new" panel, lists
+as cards, sale/purchase entry with item cards and a fixed total/save bar, a
+full "More" menu and a search screen. Every other table turns into stacked
+cards. The desktop layout is unchanged.
+
 **Administration** — users, roles (ADMIN, MANAGER, ACCOUNTANT, STAFF) enforced
 by the API, append-only audit log (user, action, model, object, timestamp, IP,
 before/after data), business settings, global debounced search (Ctrl+K).

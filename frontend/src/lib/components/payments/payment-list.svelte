@@ -14,6 +14,9 @@
 	import Pagination from '$lib/components/ui/pagination.svelte';
 	import TableState from '$lib/components/ui/table-state.svelte';
 	import StatusBadge from '$lib/components/ui/status-badge.svelte';
+	import MCard from '$lib/components/mobile/m-card.svelte';
+	import MState from '$lib/components/mobile/m-state.svelte';
+	import { phone } from '$lib/stores/viewport.svelte';
 
 	let { kind }: { kind: PayKind } = $props();
 	// svelte-ignore state_referenced_locally
@@ -32,6 +35,25 @@
 	{/snippet}
 </PageHeader>
 
+{#if phone.current}
+	<div class="mb-2 grid gap-2">
+		<SearchInput placeholder="Number, {side.partyLabel.toLowerCase()}, reference…" onSearch={(v) => list.set('search', v)} /></div>
+	<MState loading={list.loading} error={list.error} empty={!list.items.length} onRetry={() => list.load()} />
+	<div>
+		{#each list.items as r (r.id)}
+			<MCard href="{side.route}/{r.id}" title={r.number} subtitle={r.party_name}
+				meta="{fmtDate(r.date)} · {r.payment_method_display}{r.reference_number ? ` · ${r.reference_number}` : ''}"
+				amount={money(r.amount)} muted={r.status === 'CANCELLED'}>
+				{#snippet badge()}
+					{#if r.status === 'CANCELLED'}<StatusBadge status="CANCELLED" />
+					{:else if Number(r.unallocated_amount) > 0}<span class="text-[11px] font-medium text-amber-700">Advance {money(r.unallocated_amount)}</span>
+					{:else}<span class="text-[11px] text-muted-foreground">Allocated</span>{/if}
+				{/snippet}
+			</MCard>
+		{/each}
+	</div>
+	<Pagination page={list.page} totalPages={list.totalPages} count={list.count} pageSize={list.pageSize} onPage={list.setPage} onPageSize={list.setPageSize} />
+{:else}
 <Card bodyClass="p-0">
 	<div class="flex flex-wrap items-end gap-2 border-b p-3">
 		<SearchInput placeholder="Number, {side.partyLabel.toLowerCase()}, reference…" onSearch={(v) => list.set('search', v)} />
@@ -63,3 +85,4 @@
 	</div>
 	<Pagination page={list.page} totalPages={list.totalPages} count={list.count} pageSize={list.pageSize} onPage={list.setPage} onPageSize={list.setPageSize} />
 </Card>
+{/if}

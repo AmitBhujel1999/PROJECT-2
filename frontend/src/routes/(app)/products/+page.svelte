@@ -16,6 +16,10 @@
 	import StatusBadge from '$lib/components/ui/status-badge.svelte';
 	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
 	import ProductFormDialog from '$lib/components/products/product-form-dialog.svelte';
+	import MCard from '$lib/components/mobile/m-card.svelte';
+	import MState from '$lib/components/mobile/m-state.svelte';
+	import { phone } from '$lib/stores/viewport.svelte';
+	import { page } from '$app/state';
 
 	const list = new ListState<Product>('products/', { is_active: 'true' });
 	list.load();
@@ -34,6 +38,14 @@
 		toast.success(res.message);
 		list.load();
 	}
+
+	// Opened from the phone "+ New" panel.
+	$effect(() => {
+		if (page.url.searchParams.get('new') === '1' && canManage) {
+			editing = null;
+			formOpen = true;
+		}
+	});
 </script>
 
 <svelte:head><title>Products · Accounting</title></svelte:head>
@@ -46,6 +58,21 @@
 	{/snippet}
 </PageHeader>
 
+{#if phone.current}
+	<div class="mb-2 grid gap-2">
+		<SearchInput placeholder="Search name or SKU…" onSearch={(v) => list.set('search', v)} /></div>
+	<MState loading={list.loading} error={list.error} empty={!list.items.length} onRetry={() => list.load()} />
+	<div>
+		{#each list.items as p (p.id)}
+			{@const low = Number(p.current_stock) <= Number(p.reorder_level)}
+			<MCard href="/products/{p.id}" title={p.name} subtitle="{p.sku_code} · Sell {money(p.selling_price)}" meta="Cost {money(p.purchase_price)} · {auth.taxLabel} {p.tax_rate}%"
+				amount="{qty(p.current_stock)} {p.unit_display}" amountClass={Number(p.current_stock) <= 0 ? 'text-red-600' : low ? 'text-amber-700' : ''} muted={!p.is_active}>
+				{#snippet badge()}{#if !p.is_active}<StatusBadge status="INACTIVE" />{:else if low}<span class="text-[11px] font-medium text-amber-700">Reorder</span>{/if}{/snippet}
+			</MCard>
+		{/each}
+	</div>
+	<Pagination page={list.page} totalPages={list.totalPages} count={list.count} pageSize={list.pageSize} onPage={list.setPage} onPageSize={list.setPageSize} />
+{:else}
 <Card bodyClass="p-0">
 	<div class="flex flex-wrap items-center gap-2 border-b p-3">
 		<SearchInput placeholder="Search name or SKU…" onSearch={(v) => list.set('search', v)} />
@@ -86,6 +113,7 @@
 	</div>
 	<Pagination page={list.page} totalPages={list.totalPages} count={list.count} pageSize={list.pageSize} onPage={list.setPage} onPageSize={list.setPageSize} />
 </Card>
+{/if}
 
 <ProductFormDialog bind:open={formOpen} product={editing} onSaved={() => list.load()} />
 <ConfirmDialog

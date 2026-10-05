@@ -14,6 +14,9 @@
 	import Pagination from '$lib/components/ui/pagination.svelte';
 	import TableState from '$lib/components/ui/table-state.svelte';
 	import StatusBadge from '$lib/components/ui/status-badge.svelte';
+	import MCard from '$lib/components/mobile/m-card.svelte';
+	import MState from '$lib/components/mobile/m-state.svelte';
+	import { phone } from '$lib/stores/viewport.svelte';
 
 	const list = new ListState<Expense>('expenses/');
 	list.load();
@@ -36,6 +39,21 @@
 	{/snippet}
 </PageHeader>
 
+{#if phone.current}
+	<div class="mb-2 grid gap-2">
+		<SearchInput placeholder="Number, description, paid to…" onSearch={(v) => list.set('search', v)} />
+		<Select bind:value={category} onchange={() => list.set('category', category)} options={categories} placeholder="All categories" aria-label="Category" /></div>
+	<MState loading={list.loading} error={list.error} empty={!list.items.length} onRetry={() => list.load()} />
+	<div>
+		{#each list.items as e (e.id)}
+			<MCard href="/expenses/{e.id}" title={e.expense_number} subtitle="{e.category_name} · {e.description}"
+				meta="{fmtDate(e.date)} · {e.payment_method_display}{e.paid_to ? ` · ${e.paid_to}` : ''}" amount={money(e.total_amount)} muted={e.status === 'CANCELLED'}>
+				{#snippet badge()}{#if e.status === 'CANCELLED'}<StatusBadge status="CANCELLED" />{/if}{/snippet}
+			</MCard>
+		{/each}
+	</div>
+	<Pagination page={list.page} totalPages={list.totalPages} count={list.count} pageSize={list.pageSize} onPage={list.setPage} onPageSize={list.setPageSize} />
+{:else}
 <Card bodyClass="p-0">
 	<div class="flex flex-wrap items-end gap-2 border-b p-3">
 		<SearchInput placeholder="Number, description, paid to, reference…" onSearch={(v) => list.set('search', v)} />
@@ -69,3 +87,4 @@
 	</div>
 	<Pagination page={list.page} totalPages={list.totalPages} count={list.count} pageSize={list.pageSize} onPage={list.setPage} onPageSize={list.setPageSize} />
 </Card>
+{/if}

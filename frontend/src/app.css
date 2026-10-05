@@ -263,3 +263,122 @@
 		margin: 12mm;
 	}
 }
+
+/* ===================================================================== */
+/* Phone layout (below 768px): rendered only inside .m-shell             */
+/* ===================================================================== */
+.m-shell main {
+	padding-bottom: 16px;
+}
+.m-shell.with-tabs main {
+	padding-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
+/* Page header becomes the sticky top bar */
+.m-shell .page-header {
+	@apply sticky top-0 z-20 -mx-3 -mt-3 mb-3 items-center gap-2 bg-sidebar px-3 py-2.5 text-white shadow-md;
+}
+.m-shell .page-header h1 {
+	@apply text-lg text-white;
+}
+.m-shell .page-header p {
+	@apply text-xs text-white/60;
+}
+.m-shell .page-header a[data-back] {
+	@apply text-white/70;
+}
+.m-shell .page-header .bg-primary {
+	@apply bg-primary text-primary-foreground;
+}
+.m-shell .page-header .bg-background {
+	@apply border-white/20 bg-white/10 text-white;
+}
+.m-shell .page-header button,
+.m-shell .page-header a.inline-flex {
+	@apply h-8 px-2.5 text-xs;
+}
+
+/* Bottom navigation */
+.m-tabs {
+	@apply fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-background/95 px-1 pt-1.5 backdrop-blur;
+	padding-bottom: calc(8px + env(safe-area-inset-bottom));
+}
+.m-tab {
+	@apply flex flex-col items-center gap-0.5 text-[10px] font-medium text-muted-foreground;
+}
+.m-tab.on {
+	@apply font-semibold text-primary;
+}
+.m-plus > span {
+	@apply -mt-5 mb-0.5 grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/40;
+}
+
+/* Cards, chips */
+.m-card {
+	@apply flex items-center gap-3 rounded-xl border bg-background px-3 py-2.5 shadow-xs;
+}
+.m-card + .m-card {
+	@apply mt-2;
+}
+.m-chip {
+	@apply shrink-0 whitespace-nowrap rounded-full border bg-background px-3 py-1 text-xs font-medium;
+}
+.m-chip.on {
+	@apply border-primary bg-primary text-primary-foreground;
+}
+.m-report-tabs {
+	@apply -mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1;
+}
+.m-avatar {
+	@apply grid size-9 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-primary;
+}
+
+/* Every other table turns into stacked cards (labels come from table-labels.ts) */
+.m-shell .overflow-x-auto:has(> .table-base) {
+	@apply bg-muted/50 p-2;
+}
+.m-shell .table-base,
+.m-shell .table-base tbody,
+.m-shell .table-base tfoot {
+	display: block;
+	min-width: 0 !important;
+}
+.m-shell .table-base thead {
+	display: none;
+}
+.m-shell .table-base tr {
+	@apply mb-2 block rounded-xl border bg-background px-3 py-1.5 shadow-xs last:mb-0;
+}
+.m-shell .table-base tbody tr:hover {
+	@apply bg-background;
+}
+.m-shell .table-base td {
+	@apply flex items-center justify-between gap-3 border-0 px-0 py-1 text-right;
+	white-space: normal;
+}
+.m-shell .table-base td::before {
+	content: attr(data-label);
+	@apply shrink-0 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground;
+}
+.m-shell .table-base td[data-label='']::before,
+.m-shell .table-base td:not([data-label])::before {
+	display: none;
+}
+.m-shell .table-base td:empty {
+	display: none;
+}
+.m-shell .table-base td[colspan] {
+	@apply justify-center text-center;
+}
+.m-shell .table-base tfoot tr {
+	@apply bg-muted font-semibold;
+}
+.m-shell [data-testid='dashboard-cards'] .stat-icon {
+	display: none;
+}
+.m-shell [data-testid='dashboard-cards'] > * {
+	@apply p-3;
+}
+.m-shell [data-testid='dashboard-cards'] p.text-lg {
+	@apply text-[15px];
+}

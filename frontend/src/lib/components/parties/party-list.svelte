@@ -17,6 +17,10 @@
 	import StatusBadge from '$lib/components/ui/status-badge.svelte';
 	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
 	import PartyFormDialog from './party-form-dialog.svelte';
+	import MCard from '$lib/components/mobile/m-card.svelte';
+	import MState from '$lib/components/mobile/m-state.svelte';
+	import { phone } from '$lib/stores/viewport.svelte';
+	import { page } from '$app/state';
 
 	let { type }: { type: PartyType } = $props();
 	// svelte-ignore state_referenced_locally
@@ -36,6 +40,14 @@
 		toast.success(res.message);
 		list.load();
 	}
+
+	// Opened from the phone "+ New" panel.
+	$effect(() => {
+		if (page.url.searchParams.get('new') === '1' && auth.can('parties.create')) {
+			editing = null;
+			formOpen = true;
+		}
+	});
 </script>
 
 <PageHeader title={side.plural} description="Search by name, phone, PAN/VAT or email.">
@@ -44,6 +56,21 @@
 	{/snippet}
 </PageHeader>
 
+{#if phone.current}
+	<div class="mb-2 grid gap-2">
+		<SearchInput placeholder="Name, phone, PAN…" onSearch={(v) => list.set('search', v)} /></div>
+	<MState loading={list.loading} error={list.error} empty={!list.items.length} onRetry={() => list.load()} />
+	<div>
+		{#each list.items as p (p.id)}
+			<MCard href="{side.route}/{p.id}" title={p.name} subtitle={[p.phone, p.pan_vat_no && `PAN ${p.pan_vat_no}`].filter(Boolean).join(' · ')}
+				meta={p.credit_terms_display} muted={!p.is_active}>
+				{#snippet leading()}<span class="m-avatar">{p.name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span>{/snippet}
+				{#snippet badge()}{#if !p.is_active}<StatusBadge status="INACTIVE" />{/if}{/snippet}
+			</MCard>
+		{/each}
+	</div>
+	<Pagination page={list.page} totalPages={list.totalPages} count={list.count} pageSize={list.pageSize} onPage={list.setPage} onPageSize={list.setPageSize} />
+{:else}
 <Card bodyClass="p-0">
 	<div class="flex flex-wrap gap-2 border-b p-3">
 		<SearchInput placeholder="Search {side.plural.toLowerCase()}…" onSearch={(v) => list.set('search', v)} />
@@ -76,6 +103,7 @@
 	</div>
 	<Pagination page={list.page} totalPages={list.totalPages} count={list.count} pageSize={list.pageSize} onPage={list.setPage} onPageSize={list.setPageSize} />
 </Card>
+{/if}
 
 <PartyFormDialog bind:open={formOpen} {type} party={editing} onSaved={() => list.load()} />
 <ConfirmDialog bind:open={confirmOpen} title={target?.is_active ? `Deactivate ${side.label.toLowerCase()}?` : `Activate ${side.label.toLowerCase()}?`}

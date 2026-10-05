@@ -30,11 +30,11 @@ test('staff role cannot reach finance features (server-enforced)', async ({ page
 	expect(res).toBe(403);
 });
 
-test('mobile drawer navigation works', async ({ browser }) => {
+test('phone navigation works', async ({ browser }) => {
 	const context = await browser.newContext({ viewport: { width: 390, height: 844 }, baseURL: test.info().project.use.baseURL });
 	const page = await context.newPage();
 	await login(page);
-	await page.getByTestId('mobile-menu').click();
+	await page.getByRole('navigation', { name: 'Bottom navigation' }).getByRole('link', { name: 'More' }).click();
 	await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Customers' }).click();
 	await expect(page).toHaveURL(/\/customers$/);
 	await expect(page.getByRole('heading', { name: 'Customers' })).toBeVisible();

@@ -13,6 +13,9 @@
 	import Pagination from '$lib/components/ui/pagination.svelte';
 	import TableState from '$lib/components/ui/table-state.svelte';
 	import StatusBadge from '$lib/components/ui/status-badge.svelte';
+	import MCard from '$lib/components/mobile/m-card.svelte';
+	import MState from '$lib/components/mobile/m-state.svelte';
+	import { phone } from '$lib/stores/viewport.svelte';
 
 	let status = $state(page.url.searchParams.get('status') ?? '');
 	let asOf = $state('');
@@ -39,6 +42,20 @@
 	</div>
 {/if}
 
+{#if phone.current}
+	<div class="mb-2 grid gap-2">
+		<SearchInput placeholder="Search item or SKU…" onSearch={(v) => list.set('search', v)} /></div>
+	<MState loading={list.loading} error={list.error} empty={!list.items.length} onRetry={() => list.load()} />
+	<div>
+		{#each list.items as r (r.id)}
+			<MCard href="/products/{r.id}" title={r.name} subtitle="{r.sku_code} · In {qty(r.total_purchased)} · Out {qty(r.total_sold)}"
+				meta="Value {money(r.cost_value)}" amount="{qty(r.current_stock)} {r.unit}">
+				{#snippet badge()}<StatusBadge status={r.stock_status} />{/snippet}
+			</MCard>
+		{/each}
+	</div>
+	<Pagination page={list.page} totalPages={list.totalPages} count={list.count} pageSize={list.pageSize} onPage={list.setPage} onPageSize={list.setPageSize} />
+{:else}
 <Card bodyClass="p-0">
 	<div class="flex flex-wrap items-end gap-2 border-b p-3">
 		<SearchInput placeholder="Search item or SKU…" onSearch={(v) => list.set('search', v)} />
@@ -76,3 +93,4 @@
 	</div>
 	<Pagination page={list.page} totalPages={list.totalPages} count={list.count} pageSize={list.pageSize} onPage={list.setPage} onPageSize={list.setPageSize} />
 </Card>
+{/if}

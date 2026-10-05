@@ -18,6 +18,7 @@
 	import Combobox from '$lib/components/ui/combobox.svelte';
 	import Spinner from '$lib/components/ui/spinner.svelte';
 	import PartyPicker from '$lib/components/parties/party-picker.svelte';
+	import { phone } from '$lib/stores/viewport.svelte';
 
 	/**
 	 * Sales invoice / purchase bill entry. The browser only collects inputs;
@@ -213,6 +214,12 @@
 		}
 	}
 
+	function step(row: Row, delta: number) {
+		const next = Math.max(1, Math.floor(Number(row.quantity) || 0) + delta);
+		row.quantity = String(next);
+		schedulePreview();
+	}
+
 	const paidPreview = $derived(paymentStatus === 'PAID' ? totals?.total_amount : paymentStatus === 'PARTIAL' ? paidAmount : '0');
 </script>
 
@@ -250,6 +257,59 @@
 
 		<Card title="Items" bodyClass="p-0">
 			{#snippet actions()}{#if previewing}<Spinner class="text-muted-foreground" />{/if}{/snippet}
+			{#if phone.current}
+				<div class="grid gap-2 bg-muted/50 p-2" data-testid="entry-items">
+					{#each rows as row, i (row.key)}
+						{@const ln = lineFor(row)}
+						{@const stock = ln?.available_stock ?? row.stock}
+						{@const short = isSale && row.product && stock !== null && Number(row.quantity) > Number(stock)}
+						<div class="rounded-xl border bg-background p-2.5 shadow-xs" class:border-red-400={stockErrorProduct === row.product && row.product !== null}>
+							<div class="flex items-start gap-2">
+								<div class="min-w-0 flex-1">
+									<Combobox id="item-{row.key}" bind:value={row.product} bind:label={row.label} load={loadProducts}
+										getLabel={(p: Product) => `${p.name} (${p.sku_code})`} placeholder="Search item or SKU…" onSelect={(p) => selectProduct(row, p)}>
+										{#snippet item(p: Product)}
+											<div class="grid">
+												<span class="font-medium">{p.name}</span>
+												<span class="text-xs tabular-nums text-muted-foreground">{p.sku_code} · Stock {fmtQty(p.current_stock)} · {money(isSale ? p.selling_price : p.purchase_price)}</span>
+											</div>
+										{/snippet}
+									</Combobox>
+								</div>
+								<button type="button" class="rounded p-2 text-muted-foreground" onclick={() => removeRow(i)} aria-label="Remove row {i + 1}"><Trash2 class="size-4" /></button>
+							</div>
+							{#if row.product}
+								<div class="mt-2 grid grid-cols-2 gap-2">
+									<div>
+										<p class="mb-1 text-[11px] text-muted-foreground">Qty {#if stock !== null}<span class:text-red-600={short}>· {fmtQty(stock)} {row.unit} in stock</span>{/if}</p>
+										<div class="flex h-9 overflow-hidden rounded-md border">
+											<button type="button" class="w-9 bg-muted font-bold" onclick={() => step(row, -1)} aria-label="Less">−</button>
+											<input type="number" min="0.001" step="any" bind:value={row.quantity} oninput={schedulePreview} class="w-full min-w-0 text-center text-sm font-semibold outline-none" aria-label="Quantity row {i + 1}" aria-invalid={!!short} />
+											<button type="button" class="w-9 bg-muted font-bold" onclick={() => step(row, 1)} aria-label="More">+</button>
+										</div>
+									</div>
+									<div>
+										<p class="mb-1 text-[11px] text-muted-foreground">{isSale ? 'Price' : 'Unit cost'}</p>
+										<Input type="number" min="0" step="0.01" bind:value={row.unit_price} oninput={schedulePreview} class="h-9 text-right" aria-label="Price row {i + 1}" />
+									</div>
+									<div class="col-span-2 flex items-center gap-2">
+										<select class="h-9 w-24 rounded-md border bg-background px-1.5 text-sm" bind:value={row.discount_type} onchange={schedulePreview} aria-label="Discount type row {i + 1}">
+											<option value="">No disc.</option><option value="PERCENTAGE">%</option><option value="FIXED">Fixed</option>
+										</select>
+										{#if row.discount_type}
+											<Input type="number" min="0" step="0.01" bind:value={row.discount_value} oninput={schedulePreview} class="h-9 w-24 text-right" aria-label="Discount value row {i + 1}" />
+										{/if}
+										<div class="ml-auto text-right">
+											<p class="font-semibold tabular-nums">{ln ? money(ln.net_amount) : '—'}</p>
+											{#if ln}<p class="text-[11px] text-muted-foreground">{auth.taxLabel} {ln.tax_rate}%{Number(ln.discount_amount) > 0 ? ` · −${money(ln.discount_amount)}` : ''}</p>{/if}
+										</div>
+									</div>
+								</div>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{:else}
 			<div class="overflow-x-auto">
 				<table class="table-base min-w-[980px]" data-testid="entry-items">
 					<thead>
@@ -312,8 +372,9 @@
 					</tbody>
 				</table>
 			</div>
+			{/if}
 			<div class="flex items-center justify-between border-t p-3">
-				<Button variant="outline" size="sm" onclick={() => rows.push(newRow())}><Plus />Add row</Button>
+				<Button variant="outline" size="sm" onclick={() => rows.push(newRow())}><Plus />{phone.current ? 'Add item' : 'Add row'}</Button>
 				{#if errors.items}<p class="text-sm text-destructive">{errors.items}</p>{/if}
 			</div>
 		</Card>
@@ -366,6 +427,17 @@
 			</div>
 		</Card>
 
+		{#if phone.current}
+			<!-- Phone: total and save stay at the bottom of the screen -->
+			<div class="h-20"></div>
+			<div class="no-print fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t bg-background px-3 pt-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]" style="padding-bottom: calc(10px + env(safe-area-inset-bottom))">
+				<div class="min-w-0 flex-1">
+					<p class="text-[11px] text-muted-foreground">Total ({auth.currency}){#if previewing} · updating…{/if}</p>
+					<p class="text-lg font-bold tabular-nums">{money(totals?.total_amount ?? '0')}</p>
+				</div>
+				<Button size="lg" loading={saving} onclick={() => save('save')} data-testid="save-doc"><Save />Save {isSale ? 'sale' : 'purchase'}</Button>
+			</div>
+		{:else}
 		<div class="grid gap-2">
 			<Button size="lg" loading={saving} onclick={() => save('save')} data-testid="save-doc"><Save />Save {isSale ? 'sale' : 'purchase'}</Button>
 			<div class="grid grid-cols-2 gap-2">
@@ -373,5 +445,6 @@
 				<Button variant="outline" disabled={saving} onclick={() => save('pdf')} data-testid="save-pdf"><FileDown />Save & PDF</Button>
 			</div>
 		</div>
+		{/if}
 	</div>
 </div>

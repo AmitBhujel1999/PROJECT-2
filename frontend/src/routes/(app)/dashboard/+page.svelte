@@ -134,7 +134,7 @@
 {:else if query.isError}
 	<p class="rounded-md bg-red-50 p-4 text-red-700">{query.error.message}</p>
 {:else if d}
-	<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="dashboard-cards">
+	<div class="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4" data-testid="dashboard-cards">
 		<StatCard label="Today's Sales" value={`${cur} ${money(c.todays_sales)}`} hint={`Period: ${money(c.period_sales)}`} icon={ShoppingCart} href="/sales" />
 		<StatCard label="Today's Purchases" value={`${cur} ${money(c.todays_purchases)}`} hint={`Period: ${money(c.period_purchases)}`} icon={Truck} href="/purchases" />
 		<StatCard label="Today's Receipts" value={`${cur} ${money(c.todays_receipts)}`} hint={`Period: ${money(c.period_receipts)}`} icon={HandCoins} tone="success" />

@@ -13,6 +13,10 @@
 	import Pagination from '$lib/components/ui/pagination.svelte';
 	import TableState from '$lib/components/ui/table-state.svelte';
 	import StatusBadge from '$lib/components/ui/status-badge.svelte';
+	import MCard from '$lib/components/mobile/m-card.svelte';
+	import MChips from '$lib/components/mobile/m-chips.svelte';
+	import MState from '$lib/components/mobile/m-state.svelte';
+	import { phone } from '$lib/stores/viewport.svelte';
 
 	let { kind }: { kind: 'sale' | 'purchase' } = $props();
 	// svelte-ignore state_referenced_locally
@@ -35,6 +39,24 @@
 	{/snippet}
 </PageHeader>
 
+{#if phone.current}
+	<div class="mb-2 grid gap-2">
+		<SearchInput placeholder={isSale ? 'Invoice no., customer, phone…' : 'Bill no., vendor…'} onSearch={(v) => list.set('search', v)} />
+		<MChips bind:value={paymentStatus} onchange={(v) => list.set('payment_status', v)}
+			options={[{ value: '', label: 'All' }, { value: 'UNPAID', label: 'Unpaid' }, { value: 'PARTIAL', label: 'Partial' }, { value: 'PAID', label: 'Paid' }]} />
+	</div>
+	<MState loading={list.loading} error={list.error} empty={!list.items.length} />
+	<div data-testid="doc-list">
+		{#each list.items as d (d.id)}
+			<MCard href="/{path}/{d.id}" title={(isSale ? d.invoice_number : d.bill_number) ?? ''} subtitle={isSale ? d.customer_name : d.vendor_name}
+				meta="{fmtDate(d.date)}{!isSale && d.vendor_bill_number ? ` · ${d.vendor_bill_number}` : ''}{Number(d.balance_due) > 0 ? ` · due ${fmtDate(d.due_date)}` : ''}"
+				amount={money(d.total_amount)} muted={d.status === 'CANCELLED'}>
+				{#snippet badge()}<StatusBadge status={d.status === 'CANCELLED' ? 'CANCELLED' : d.payment_status} />{/snippet}
+			</MCard>
+		{/each}
+	</div>
+	<Pagination page={list.page} totalPages={list.totalPages} count={list.count} pageSize={list.pageSize} onPage={list.setPage} onPageSize={list.setPageSize} />
+{:else}
 <Card bodyClass="p-0">
 	<div class="flex flex-wrap items-end gap-2 border-b p-3">
 		<SearchInput placeholder={isSale ? 'Invoice no., customer, phone…' : 'Bill no., vendor…'} onSearch={(v) => list.set('search', v)} />
@@ -77,3 +99,4 @@
 	</div>
 	<Pagination page={list.page} totalPages={list.totalPages} count={list.count} pageSize={list.pageSize} onPage={list.setPage} onPageSize={list.setPageSize} />
 </Card>
+{/if}
