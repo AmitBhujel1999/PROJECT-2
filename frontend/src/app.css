@@ -229,6 +229,11 @@
 .window .page-header .bg-primary {
 	@apply bg-background text-primary hover:bg-background/90;
 }
+/* Outline buttons (CSV, PDF, Print, …) have a white background but no text
+   colour of their own, so they inherited the title bar's white text. */
+.window .page-header .bg-background {
+	@apply text-foreground hover:text-accent-foreground;
+}
 
 @media print {
 	.no-print {
