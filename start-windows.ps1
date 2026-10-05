@@ -11,9 +11,10 @@
 #
 #  Phones and other computers on the same Wi-Fi (and Tailscale devices) can
 #  open the app at http://<this-PC's-IP>:4173 - the Android app uses this.
-#  Run with -LocalOnly to allow this computer only.
+#  Run with -LocalOnly to allow this computer only, -NoBrowser to skip
+#  opening the browser (used when it starts automatically at sign-in).
 # ============================================================================
-param([switch]$LocalOnly)
+param([switch]$LocalOnly, [switch]$NoBrowser)
 # Native tools (uv, bun, winget, psql) report progress on stderr; with 'Stop'
 # Windows PowerShell 5.1 could treat that as fatal, so rely on exit codes.
 $ErrorActionPreference = 'Continue'
@@ -360,4 +361,4 @@ foreach ($ip in $LanIps) { Write-Host " On your phone (same Wi-Fi / Tailscale): 
 Write-Host " Stop it:  powershell -ExecutionPolicy Bypass -File .\stop-windows.ps1"
 Write-Host " Logs:     .local\backend*.log, .local\frontend*.log"
 Write-Host "============================================================" -ForegroundColor Green
-Start-Process $AppUrl
+if (-not $NoBrowser) { Start-Process $AppUrl }

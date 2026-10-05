@@ -120,7 +120,9 @@ server, so phones see the same data as the computer. GitHub Actions builds it on
 every change and publishes `Accounting.apk` under Releases. `start-windows.ps1`
 now also listens on the local network and prints the phone address
 (e.g. `http://192.168.1.72:4173`); run it with `-LocalOnly` to turn that off.
-Windows Firewall must allow port 4173 (the script adds the rule when run as
+To start the app automatically every time you sign in to Windows, run
+`powershell -ExecutionPolicy Bypass -File .utostart-windows.ps1` once
+(`-Remove` turns it off). Windows Firewall must allow port 4173 (the script adds the rule when run as
 Administrator, otherwise it prints the command).
 
 **Administration** — users, roles (ADMIN, MANAGER, ACCOUNTANT, STAFF) enforced
