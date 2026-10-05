@@ -1,0 +1,41 @@
+plugins {
+    id 'com.android.application'
+}
+
+// CI passes the GitHub run number so every APK upgrades the previous one.
+def build = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+
+android {
+    namespace 'com.ameet.accounting'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.ameet.accounting'
+        minSdk 24
+        targetSdk 36
+        versionCode build
+        versionName "1.${build}"
+    }
+
+    signingConfigs {
+        // Permanent key kept in this private repo so updates install over the old app.
+        release {
+            storeFile file('accounting.keystore')
+            storePassword 'android'
+            keyAlias 'accounting'
+            keyPassword 'android'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

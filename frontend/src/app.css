@@ -276,7 +276,7 @@
 
 /* Page header becomes the sticky top bar */
 .m-shell .page-header {
-	@apply sticky top-0 z-20 -mx-3 -mt-3 mb-3 items-center gap-2 bg-sidebar px-3 py-2.5 text-white shadow-md;
+	@apply sticky top-0 z-20 -mx-3 mb-3 items-center gap-2 bg-sidebar px-3 py-2.5 text-white shadow-md;
 }
 .m-shell .page-header h1 {
 	@apply text-lg text-white;
@@ -327,7 +327,7 @@
 	@apply border-primary bg-primary text-primary-foreground;
 }
 .m-report-tabs {
-	@apply -mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1;
+	@apply -mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pt-2;
 }
 .m-avatar {
 	@apply grid size-9 shrink-0 place-items-center rounded-full bg-accent text-xs font-bold text-primary;

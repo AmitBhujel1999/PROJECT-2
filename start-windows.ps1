@@ -8,7 +8,12 @@
 #  creates the database, installs dependencies, builds the frontend, loads
 #  demo data and starts the app. Later runs just start it again.
 #  Stop it with:  powershell -ExecutionPolicy Bypass -File .\stop-windows.ps1
+#
+#  Phones and other computers on the same Wi-Fi (and Tailscale devices) can
+#  open the app at http://<this-PC's-IP>:4173 - the Android app uses this.
+#  Run with -LocalOnly to allow this computer only.
 # ============================================================================
+param([switch]$LocalOnly)
 # Native tools (uv, bun, winget, psql) report progress on stderr; with 'Stop'
 # Windows PowerShell 5.1 could treat that as fatal, so rely on exit codes.
 $ErrorActionPreference = 'Continue'
@@ -271,6 +276,34 @@ if ($LASTEXITCODE -ne 0) { Pop-Location; Fail "Frontend build failed." }
 Pop-Location
 
 # ---------------------------------------------------------------------------
+# 4b. Network access for phones (Android app) on the same Wi-Fi / Tailscale
+$LanIps = @()
+if (-not $LocalOnly) {
+    $LanIps = @(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object { $_.IPAddress -match '^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.)' } |
+        Select-Object -ExpandProperty IPAddress)
+}
+$hosts   = @('localhost', '127.0.0.1') + $LanIps
+$origins = $hosts | ForEach-Object { "http://${_}:$AppPort" }
+$envLines = Get-Content $BackendEnv | Where-Object { $_ -notmatch '^(ALLOWED_HOSTS|CSRF_TRUSTED_ORIGINS)=' }
+$envLines += "ALLOWED_HOSTS=$($hosts -join ',')"
+$envLines += "CSRF_TRUSTED_ORIGINS=$($origins -join ',')"
+[System.IO.File]::WriteAllText($BackendEnv, ($envLines -join "`r`n") + "`r`n")
+$BindHost = if ($LocalOnly) { '127.0.0.1' } else { '0.0.0.0' }
+if (-not $LocalOnly) {
+    $rule = Get-NetFirewallRule -DisplayName 'Accounting app (port 4173)' -ErrorAction SilentlyContinue
+    if (-not $rule) {
+        $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+        if ($isAdmin) {
+            New-NetFirewallRule -DisplayName 'Accounting app (port 4173)' -Direction Inbound -Protocol TCP -LocalPort $AppPort -Action Allow -Profile Private | Out-Null
+            Say "Opened port $AppPort in Windows Firewall for private (home/office) networks."
+        } else {
+            Write-Host "NOTE: to let phones connect, run this ONCE in an Administrator PowerShell:" -ForegroundColor Yellow
+            Write-Host "  New-NetFirewallRule -DisplayName 'Accounting app (port 4173)' -Direction Inbound -Protocol TCP -LocalPort $AppPort -Action Allow -Profile Private" -ForegroundColor Yellow
+        }
+    }
+}
+
 # 5. Start backend (waitress) and frontend (preview server)
 # ---------------------------------------------------------------------------
 & (Join-Path $Root 'stop-windows.ps1') -Quiet
@@ -293,7 +326,7 @@ $backend = Start-Process -FilePath 'uv' -WorkingDirectory (Join-Path $Root 'back
 
 Say "Starting the web app on $AppUrl..."
 $frontend = Start-Process -FilePath 'bun' -WorkingDirectory (Join-Path $Root 'frontend') `
-    -ArgumentList @('run', 'preview', '--host', '127.0.0.1', '--port', "$AppPort", '--strictPort') `
+    -ArgumentList @('run', 'preview', '--host', $BindHost, '--port', "$AppPort", '--strictPort') `
     -RedirectStandardOutput (Join-Path $LocalDir 'frontend.log') -RedirectStandardError (Join-Path $LocalDir 'frontend-error.log') `
     -WindowStyle Hidden -PassThru
 
@@ -323,6 +356,7 @@ Write-Host " Accounting & Inventory is running:  $AppUrl" -ForegroundColor Green
 Write-Host " Username: admin"
 if ($adminPassword) { Write-Host " Password: $adminPassword   (also saved in .local\setup-secrets.txt)" }
 Write-Host " Demo users: demo_manager / demo_accountant / demo_staff  (password Demo@12345)"
+foreach ($ip in $LanIps) { Write-Host " On your phone (same Wi-Fi / Tailscale): http://${ip}:$AppPort" -ForegroundColor Green }
 Write-Host " Stop it:  powershell -ExecutionPolicy Bypass -File .\stop-windows.ps1"
 Write-Host " Logs:     .local\backend*.log, .local\frontend*.log"
 Write-Host "============================================================" -ForegroundColor Green

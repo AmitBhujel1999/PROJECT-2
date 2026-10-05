@@ -97,7 +97,7 @@
 {#if phone.current}
 	<!-- Phone: page header becomes the top bar, navigation lives at the bottom -->
 	<div class="m-shell flex min-h-screen flex-col" class:with-tabs={!entryForm}>
-		<main class="workspace print-full flex-1 px-3 pt-3" {@attach tableLabels}>
+		<main class="workspace print-full flex-1 px-3" {@attach tableLabels}>
 			{#if reportTabs.length}
 				<div class="m-report-tabs no-print">
 					{#each reportTabs as r (r.href)}

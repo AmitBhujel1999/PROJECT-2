@@ -115,6 +115,14 @@ as cards, sale/purchase entry with item cards and a fixed total/save bar, a
 full "More" menu and a search screen. Every other table turns into stacked
 cards. The desktop layout is unchanged.
 
+**Android app** — `android-app/` is a small native app (WebView) that opens your
+server, so phones see the same data as the computer. GitHub Actions builds it on
+every change and publishes `Accounting.apk` under Releases. `start-windows.ps1`
+now also listens on the local network and prints the phone address
+(e.g. `http://192.168.1.72:4173`); run it with `-LocalOnly` to turn that off.
+Windows Firewall must allow port 4173 (the script adds the rule when run as
+Administrator, otherwise it prints the command).
+
 **Administration** — users, roles (ADMIN, MANAGER, ACCOUNTANT, STAFF) enforced
 by the API, append-only audit log (user, action, model, object, timestamp, IP,
 before/after data), business settings, global debounced search (Ctrl+K).

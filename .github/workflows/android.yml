@@ -1,0 +1,53 @@
+name: Build Android app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android-app/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Accept Android licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: Build the APK
+        working-directory: android-app
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk ../Accounting.apk
+
+      - name: Save the APK with this run
+        uses: actions/upload-artifact@v5
+        with:
+          name: Accounting-apk
+          path: Accounting.apk
+
+      - name: Publish a download link (Releases)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: accounting-app-${{ github.run_number }}
+          name: Accounting app build ${{ github.run_number }}
+          body: |
+            Download **Accounting.apk** on your Android phone and open it to install
+            (allow "Install unknown apps" for your browser or Files app if asked).
+
+            The app shows your accounting server, so start the app on your computer first
+            (`start-windows.ps1`) and enter the phone address it prints, e.g. http://192.168.1.72:4173.
+            The phone must be on the same Wi-Fi, or connected through Tailscale.
+          files: Accounting.apk
