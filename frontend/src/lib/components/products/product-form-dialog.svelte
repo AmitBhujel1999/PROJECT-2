@@ -14,11 +14,12 @@
 	let {
 		open = $bindable(false),
 		product = null,
+		initialName = '',
 		onSaved
-	}: { open?: boolean; product?: Product | null; onSaved?: (p: Product) => void } = $props();
+	}: { open?: boolean; product?: Product | null; initialName?: string; onSaved?: (p: Product) => void } = $props();
 
 	const blank = () => ({
-		name: '',
+		name: initialName,
 		sku_code: '',
 		unit: 'PCS',
 		description: '',

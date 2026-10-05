@@ -18,6 +18,7 @@
 	import Combobox from '$lib/components/ui/combobox.svelte';
 	import Spinner from '$lib/components/ui/spinner.svelte';
 	import PartyPicker from '$lib/components/parties/party-picker.svelte';
+	import ProductFormDialog from '$lib/components/products/product-form-dialog.svelte';
 	import { phone } from '$lib/stores/viewport.svelte';
 
 	/**
@@ -108,6 +109,28 @@
 			if (rows[rows.length - 1] === row) rows.push(newRow());
 		}
 		schedulePreview();
+	}
+
+	// "Create new item": make a product without leaving the entry, then put it in a row.
+	const canCreateProduct = $derived(auth.can('products.manage'));
+	let newItemOpen = $state(false);
+	let newItemName = $state('');
+	let newItemRow: Row | null = null;
+
+	function createItem(row: Row | null, name = '') {
+		newItemRow = row;
+		newItemName = name;
+		newItemOpen = true;
+	}
+
+	function onItemCreated(p: Product) {
+		let row = newItemRow && rows.includes(newItemRow) ? newItemRow : rows.find((r) => !r.product);
+		if (!row) {
+			rows.push(newRow());
+			row = rows[rows.length - 1];
+		}
+		row.label = `${p.name} (${p.sku_code})`;
+		selectProduct(row, p);
 	}
 
 	function removeRow(i: number) {
@@ -256,7 +279,12 @@
 		</Card>
 
 		<Card title="Items" bodyClass="p-0">
-			{#snippet actions()}{#if previewing}<Spinner class="text-muted-foreground" />{/if}{/snippet}
+			{#snippet actions()}
+				<div class="flex items-center gap-2">
+					{#if previewing}<Spinner class="text-muted-foreground" />{/if}
+					{#if canCreateProduct}<Button variant="outline" size="sm" onclick={() => createItem(null)} data-testid="create-item"><Plus />Create new item</Button>{/if}
+				</div>
+			{/snippet}
 			{#if phone.current}
 				<div class="grid gap-2 bg-muted/50 p-2" data-testid="entry-items">
 					{#each rows as row, i (row.key)}
@@ -273,6 +301,14 @@
 												<span class="font-medium">{p.name}</span>
 												<span class="text-xs tabular-nums text-muted-foreground">{p.sku_code} · Stock {fmtQty(p.current_stock)} · {money(isSale ? p.selling_price : p.purchase_price)}</span>
 											</div>
+										{/snippet}
+										{#snippet footer(q: string)}
+											{#if canCreateProduct}
+												<button type="button" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-primary hover:bg-muted"
+													onmousedown={(e) => { e.preventDefault(); createItem(row, q); }}>
+													<Plus class="size-4" /> Create new item{q ? ` "${q}"` : ''}
+												</button>
+											{/if}
 										{/snippet}
 									</Combobox>
 								</div>
@@ -341,6 +377,14 @@
 												<span><span class="font-medium">{p.name}</span> <span class="text-xs text-muted-foreground">{p.sku_code}</span></span>
 												<span class="text-xs tabular-nums text-muted-foreground">Stock {fmtQty(p.current_stock)} {p.unit_display} · {money(isSale ? p.selling_price : p.purchase_price)}</span>
 											</div>
+										{/snippet}
+										{#snippet footer(q: string)}
+											{#if canCreateProduct}
+												<button type="button" class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-primary hover:bg-muted"
+													onmousedown={(e) => { e.preventDefault(); createItem(row, q); }}>
+													<Plus class="size-4" /> Create new item{q ? ` "${q}"` : ''}
+												</button>
+											{/if}
 										{/snippet}
 									</Combobox>
 								</td>
@@ -448,3 +492,5 @@
 		{/if}
 	</div>
 </div>
+
+<ProductFormDialog bind:open={newItemOpen} initialName={newItemName} onSaved={onItemCreated} />
