@@ -203,18 +203,14 @@
 		}
 	}
 
-	function addRow() {
-		rows.push(newRow());
-		setTimeout(() => document.getElementById(`item-${rows[rows.length - 1].key}`)?.focus());
-	}
-
 	function onKeydown(e: KeyboardEvent) {
 		if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
 			e.preventDefault();
 			save('save');
 		} else if (e.altKey && e.key.toLowerCase() === 'n') {
 			e.preventDefault();
-			addRow();
+			rows.push(newRow());
+			setTimeout(() => document.getElementById(`item-${rows[rows.length - 1].key}`)?.focus());
 		}
 	}
 
@@ -231,7 +227,7 @@
 
 <PageHeader
 	title={isSale ? 'New sale' : 'New purchase'}
-	description="Invoice number is assigned when saved. Shortcuts: Ctrl+S save · Alt+N add item."
+	description="Invoice number is assigned when saved. Shortcuts: Ctrl+S save · Alt+N new row."
 	back={{ href: `/${apiPath}`, label: isSale ? 'Sales' : 'Purchases' }}
 />
 
@@ -260,12 +256,7 @@
 		</Card>
 
 		<Card title="Items" bodyClass="p-0">
-			{#snippet actions()}
-				<div class="flex items-center gap-2">
-					{#if previewing}<Spinner class="text-muted-foreground" />{/if}
-					<Button size="sm" onclick={addRow}><Plus />Add item</Button>
-				</div>
-			{/snippet}
+			{#snippet actions()}{#if previewing}<Spinner class="text-muted-foreground" />{/if}{/snippet}
 			{#if phone.current}
 				<div class="grid gap-2 bg-muted/50 p-2" data-testid="entry-items">
 					{#each rows as row, i (row.key)}
@@ -382,11 +373,8 @@
 				</table>
 			</div>
 			{/if}
-			<div class="grid gap-2 border-t p-3">
-				<button type="button" onclick={addRow} data-testid="add-item"
-					class="flex h-11 w-full items-center justify-center gap-2 rounded-md border-2 border-dashed border-primary/40 text-sm font-semibold text-primary hover:border-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60">
-					<Plus class="size-4" />Add item <span class="font-normal text-muted-foreground">(Alt+N)</span>
-				</button>
+			<div class="flex items-center justify-between border-t p-3">
+				<Button variant="outline" size="sm" onclick={() => rows.push(newRow())}><Plus />{phone.current ? 'Add item' : 'Add row'}</Button>
 				{#if errors.items}<p class="text-sm text-destructive">{errors.items}</p>{/if}
 			</div>
 		</Card>
