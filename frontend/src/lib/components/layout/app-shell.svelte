@@ -3,152 +3,182 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { DropdownMenu } from 'bits-ui';
-	import { Menu, PanelLeftClose, PanelLeftOpen, X, LogOut, KeyRound, UserRound, ChevronDown } from '@lucide/svelte';
+	import { Menu, X, LogOut, KeyRound, UserRound, ChevronDown } from '@lucide/svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { cn } from '$lib/utils';
-	import { NAV } from './nav';
+	import { MENUS, filterMenu, nepaliFiscalYear, type MenuLeaf } from './menu';
+	import MenuTree from './menu-tree.svelte';
 	import GlobalSearch from './global-search.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
+	let openMenu = $state<string | null>(null);
 	let mobileOpen = $state(false);
-	let collapsed = $state(false);
 
-	// Collapse preference is a harmless UI convenience (no auth data).
-	$effect(() => {
-		collapsed = localStorage.getItem('sidebar-collapsed') === '1';
-	});
-	function toggleCollapsed() {
-		collapsed = !collapsed;
-		localStorage.setItem('sidebar-collapsed', collapsed ? '1' : '0');
-	}
-
-	const groups = $derived(
-		NAV.map((g) => ({ ...g, items: g.items.filter((i) => !i.perm || auth.can(i.perm)) })).filter((g) => g.items.length)
-	);
-
-	function isActive(href: string) {
-		const path: string = page.url.pathname;
-		if (href === '/inventory') return path === '/inventory';
-		if (href === '/settings') return path === '/settings';
-		if (href === '/expenses') return path === '/expenses' || (path.startsWith('/expenses/') && !path.startsWith('/expenses/categories'));
-		return path === href || path.startsWith(href + '/');
-	}
+	const menus = $derived(MENUS.map((m) => ({ ...m, items: filterMenu(m.items, (p) => auth.can(p)) })).filter((m) => m.items.length));
+	// Home and dashboard keep their own full-width layout; every other page sits in a window.
+	const bare = $derived(page.url.pathname === '/' || page.url.pathname === '/dashboard');
+	const fiscalYear = nepaliFiscalYear();
 
 	$effect(() => {
 		page.url.pathname;
 		mobileOpen = false;
+		openMenu = null;
 	});
 
 	async function logout() {
 		await auth.logout();
 		goto('/login');
 	}
+
+	function pick(leaf: MenuLeaf) {
+		openMenu = null;
+		mobileOpen = false;
+		if (leaf.action === 'logout') logout();
+	}
+
+	function label(text: string, key: string) {
+		const i = text.toLowerCase().indexOf(key);
+		return { before: text.slice(0, i), key: text.slice(i, i + 1), after: text.slice(i + 1) };
+	}
+
+	const typing = (el: Element | null) => !!el && (el.matches('input, textarea, select, [contenteditable="true"]') || !!el.closest('[role="listbox"]'));
+	const dialogOpen = () => !!document.querySelector('[role="dialog"], [role="alertdialog"]');
+
+	function onKeydown(e: KeyboardEvent) {
+		if (e.altKey && !e.ctrlKey && !e.metaKey && /^[a-z]$/i.test(e.key)) {
+			const menu = menus.find((m) => m.key === e.key.toLowerCase());
+			if (menu) {
+				e.preventDefault();
+				openMenu = menu.label;
+			}
+			return;
+		}
+		if (e.key === 'Escape') {
+			if (openMenu || mobileOpen) {
+				openMenu = null;
+				mobileOpen = false;
+				return;
+			}
+			if (bare || dialogOpen() || typing(document.activeElement)) return;
+			const back = document.querySelector<HTMLAnchorElement>('[data-back]');
+			goto(back?.getAttribute('href') ?? '/');
+			return;
+		}
+		if (e.key === 'F2' && !dialogOpen()) {
+			const add = document.querySelector<HTMLElement>('[data-shortcut="add"], [data-testid^="new-"]');
+			if (add) {
+				e.preventDefault();
+				add.click();
+			}
+			return;
+		}
+		if (e.key === 'F5' && !dialogOpen()) {
+			e.preventDefault();
+			window.print();
+		}
+	}
 </script>
 
-{#snippet sidebar(compact: boolean)}
-	<div class="flex h-14 shrink-0 items-center gap-2 border-b border-white/10 px-4">
-		<div class="grid size-8 shrink-0 place-items-center rounded-md bg-primary font-bold text-white">A</div>
-		{#if !compact}
-			<div class="min-w-0 leading-tight">
-				<p class="truncate text-sm font-semibold text-white">{auth.settings?.business_name ?? 'Accounting'}</p>
-				<p class="text-[11px] text-sidebar-muted">Accounting & Inventory</p>
-			</div>
-		{/if}
-	</div>
-	<nav class="flex-1 overflow-y-auto px-2 py-3" aria-label="Main navigation">
-		{#each groups as group (group.label)}
-			{#if group.label && !compact}
-				<p class="mb-1 mt-4 px-2 text-[11px] font-semibold uppercase tracking-wider text-sidebar-muted first:mt-0">{group.label}</p>
-			{:else if group.label}
-				<div class="mx-2 my-2 border-t border-white/10"></div>
-			{/if}
-			<ul class="grid gap-0.5">
-				{#each group.items as item (item.href)}
-					<li>
-						<a
-							href={item.href}
-							title={compact ? item.label : undefined}
-							aria-current={isActive(item.href) ? 'page' : undefined}
-							class={cn(
-								'flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors',
-								compact && 'justify-center',
-								isActive(item.href) ? 'bg-sidebar-accent font-medium text-white' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white'
-							)}
-						>
-							<item.icon class="size-4 shrink-0" />
-							{#if !compact}<span class="truncate">{item.label}</span>{/if}
-						</a>
-					</li>
-				{/each}
-			</ul>
-		{/each}
-	</nav>
-{/snippet}
+<svelte:window onkeydown={onKeydown} onclick={() => (openMenu = null)} />
 
-<div class="min-h-screen">
-	<!-- Desktop / tablet sidebar -->
-	<aside
-		class={cn(
-			'no-print fixed inset-y-0 left-0 z-30 hidden flex-col bg-sidebar text-sidebar-foreground transition-[width] md:flex',
-			collapsed ? 'w-16' : 'w-16 lg:w-64'
-		)}
-	>
-		<div class="hidden h-full flex-col lg:flex">{@render sidebar(collapsed)}</div>
-		<div class="flex h-full flex-col lg:hidden">{@render sidebar(true)}</div>
-	</aside>
+<div class="flex min-h-screen flex-col">
+	<header class="menubar no-print sticky top-0 z-30 flex h-10 items-center gap-1 px-2 sm:px-3">
+		<button class="rounded-md p-1.5 text-white/80 hover:bg-white/10 hover:text-white md:hidden" onclick={() => (mobileOpen = true)} aria-label="Open navigation" data-testid="mobile-menu">
+			<Menu class="size-5" />
+		</button>
+		<a href="/" class="mr-1 grid size-6 shrink-0 place-items-center rounded bg-primary text-xs font-bold text-white" title="Home">A</a>
 
-	<!-- Mobile drawer -->
+		<nav class="hidden items-center md:flex" aria-label="Main navigation">
+			{#each menus as menu (menu.label)}
+				{@const l = label(menu.label, menu.key)}
+				<div class="relative">
+					<button
+						type="button"
+						class={cn('menubar-item', openMenu === menu.label && 'is-open')}
+						aria-haspopup="true"
+						aria-expanded={openMenu === menu.label}
+						aria-keyshortcuts="Alt+{menu.key.toUpperCase()}"
+						onclick={(e) => {
+							e.stopPropagation();
+							openMenu = openMenu === menu.label ? null : menu.label;
+						}}
+						onmouseenter={() => {
+							if (openMenu) openMenu = menu.label;
+						}}
+					>{l.before}<u>{l.key}</u>{l.after}</button>
+					{#if openMenu === menu.label}
+						<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+						<div class="menu-panel" onclick={(e) => e.stopPropagation()}>
+							<MenuTree nodes={menu.items} onPick={pick} />
+						</div>
+					{/if}
+				</div>
+			{/each}
+		</nav>
+
+		<div class="menubar-search ml-auto w-full max-w-xs min-w-0"><GlobalSearch /></div>
+
+		<DropdownMenu.Root>
+			<DropdownMenu.Trigger class="flex items-center gap-2 rounded-md px-2 py-1 text-sm text-white/90 hover:bg-white/10" data-testid="user-menu">
+				<span class="grid size-6 place-items-center rounded-full bg-white/15 text-xs font-semibold text-white">
+					{(auth.user?.display_name ?? '?').slice(0, 1).toUpperCase()}
+				</span>
+				<span class="hidden text-left leading-tight lg:block">
+					<span class="block max-w-32 truncate text-xs font-medium">{auth.user?.display_name}</span>
+					<span class="block text-[10px] text-white/60">{auth.user?.role}</span>
+				</span>
+				<ChevronDown class="size-4 text-white/60" />
+			</DropdownMenu.Trigger>
+			<DropdownMenu.Portal>
+				<DropdownMenu.Content align="end" sideOffset={6} class="z-50 w-52 rounded-md border bg-background p-1 text-sm shadow-lg">
+					<DropdownMenu.Item class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 data-highlighted:bg-muted" onSelect={() => goto('/profile')}>
+						<UserRound class="size-4" /> Profile
+					</DropdownMenu.Item>
+					<DropdownMenu.Item class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 data-highlighted:bg-muted" onSelect={() => goto('/profile?tab=password')}>
+						<KeyRound class="size-4" /> Change password
+					</DropdownMenu.Item>
+					<DropdownMenu.Separator class="my-1 h-px bg-border" />
+					<DropdownMenu.Item class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-destructive data-highlighted:bg-red-50" onSelect={logout} data-testid="logout">
+						<LogOut class="size-4" /> Log out
+					</DropdownMenu.Item>
+				</DropdownMenu.Content>
+			</DropdownMenu.Portal>
+		</DropdownMenu.Root>
+	</header>
+
+	<!-- Mobile drawer: every menu expanded as one tree -->
 	{#if mobileOpen}
 		<div class="no-print fixed inset-0 z-40 md:hidden">
 			<button class="absolute inset-0 bg-black/50" aria-label="Close navigation" onclick={() => (mobileOpen = false)}></button>
-			<aside class="relative flex h-full w-72 max-w-[85vw] flex-col bg-sidebar text-sidebar-foreground shadow-xl" aria-label="Navigation drawer">
-				<button class="absolute right-2 top-3 rounded p-1.5 text-white/70 hover:text-white" onclick={() => (mobileOpen = false)} aria-label="Close navigation">
-					<X class="size-5" />
-				</button>
-				{@render sidebar(false)}
+			<aside class="relative flex h-full w-80 max-w-[85vw] flex-col bg-background shadow-xl" aria-label="Navigation drawer">
+				<div class="menubar flex h-10 shrink-0 items-center justify-between px-3 text-sm font-semibold text-white">
+					{auth.settings?.business_name ?? 'Accounting'}
+					<button class="rounded p-1 text-white/70 hover:text-white" onclick={() => (mobileOpen = false)} aria-label="Close navigation"><X class="size-5" /></button>
+				</div>
+				<nav class="flex-1 overflow-y-auto p-3" aria-label="Main navigation">
+					{#each menus as menu (menu.label)}
+						<p class="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground first:mt-0">{menu.label}</p>
+						<MenuTree nodes={menu.items} expandAll onPick={pick} />
+					{/each}
+				</nav>
 			</aside>
 		</div>
 	{/if}
 
-	<div class={cn('flex min-h-screen min-w-0 flex-col transition-[padding]', collapsed ? 'md:pl-16' : 'md:pl-16 lg:pl-64')}>
-		<header class="no-print sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background/95 px-3 backdrop-blur sm:px-4">
-			<button class="rounded-md p-2 hover:bg-muted md:hidden" onclick={() => (mobileOpen = true)} aria-label="Open navigation" data-testid="mobile-menu">
-				<Menu class="size-5" />
-			</button>
-			<button class="hidden rounded-md p-2 hover:bg-muted lg:block" onclick={toggleCollapsed} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
-				{#if collapsed}<PanelLeftOpen class="size-5" />{:else}<PanelLeftClose class="size-5" />{/if}
-			</button>
-			<div class="min-w-0 flex-1"><GlobalSearch /></div>
-			<DropdownMenu.Root>
-				<DropdownMenu.Trigger class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted" data-testid="user-menu">
-					<span class="grid size-7 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-						{(auth.user?.display_name ?? '?').slice(0, 1).toUpperCase()}
-					</span>
-					<span class="hidden text-left leading-tight sm:block">
-						<span class="block max-w-32 truncate font-medium">{auth.user?.display_name}</span>
-						<span class="block text-[11px] text-muted-foreground">{auth.user?.role}</span>
-					</span>
-					<ChevronDown class="size-4 text-muted-foreground" />
-				</DropdownMenu.Trigger>
-				<DropdownMenu.Portal>
-					<DropdownMenu.Content align="end" sideOffset={6} class="z-50 w-52 rounded-md border bg-background p-1 text-sm shadow-lg">
-						<DropdownMenu.Item class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 data-highlighted:bg-muted" onSelect={() => goto('/profile')}>
-							<UserRound class="size-4" /> Profile
-						</DropdownMenu.Item>
-						<DropdownMenu.Item class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 data-highlighted:bg-muted" onSelect={() => goto('/profile?tab=password')}>
-							<KeyRound class="size-4" /> Change password
-						</DropdownMenu.Item>
-						<DropdownMenu.Separator class="my-1 h-px bg-border" />
-						<DropdownMenu.Item class="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-destructive data-highlighted:bg-red-50" onSelect={logout} data-testid="logout">
-							<LogOut class="size-4" /> Log out
-						</DropdownMenu.Item>
-					</DropdownMenu.Content>
-				</DropdownMenu.Portal>
-			</DropdownMenu.Root>
-		</header>
-		<main class="print-full mx-auto w-full max-w-[1600px] flex-1 p-3 sm:p-5">
-			{@render children()}
-		</main>
-	</div>
+	<main class="workspace print-full flex-1 px-3 pb-14 pt-3 sm:px-5 sm:pt-5">
+		<div class="relative z-[1] mx-auto w-full max-w-[1600px]">
+			{#if bare}
+				{@render children()}
+			{:else}
+				<div class="window print-full">
+					<div class="window-body">{@render children()}</div>
+					<div class="window-keys no-print" aria-label="Keyboard shortcuts">
+						<span><b>F2</b> Add</span><span><b>F5</b> Print</span><span><b>Esc</b> Back</span><span><b>Alt</b>+letter Menu</span><span><b>Ctrl+K</b> Search</span>
+					</div>
+				</div>
+			{/if}
+		</div>
+		<p class="status-line no-print">{auth.settings?.business_name ?? 'Accounting'} (F.Y. {fiscalYear})</p>
+	</main>
 </div>

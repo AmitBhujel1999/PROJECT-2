@@ -13,9 +13,9 @@
 	let busy = $state(false);
 
 	function safeNext(): string {
-		const next = page.url.searchParams.get('next') ?? '/dashboard';
+		const next = page.url.searchParams.get('next') ?? '/';
 		// Only allow same-site relative paths (no open redirects).
-		return next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
+		return next.startsWith('/') && !next.startsWith('//') ? next : '/';
 	}
 
 	$effect(() => {

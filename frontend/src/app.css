@@ -100,14 +100,153 @@
 	.table-base tfoot td {
 		@apply border-t-2 bg-muted/50 px-3 py-2 font-semibold;
 	}
+
+	/* ---- Classic shell: menu bar with tree menus ---- */
+	.menubar {
+		@apply bg-sidebar text-sidebar-foreground border-b border-black/40;
+	}
+	.menubar-item {
+		@apply cursor-pointer rounded px-2.5 py-1 text-[13px] font-semibold text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-white;
+	}
+	.menubar-item u {
+		text-underline-offset: 2px;
+	}
+	.menubar-item.is-open {
+		@apply bg-sidebar-accent text-white;
+	}
+	.menubar-search input {
+		@apply h-8 border-white/10 bg-white/95 focus-visible:bg-white;
+	}
+	.menu-panel {
+		@apply absolute left-0 top-full z-50 mt-1 max-h-[75vh] w-80 overflow-y-auto rounded-lg border bg-background p-1.5 text-foreground shadow-xl;
+	}
+	.menu-tree,
+	.menu-tree-nested {
+		@apply grid;
+	}
+	.menu-tree-nested {
+		@apply ml-[7px] border-l border-dotted border-muted-foreground/40;
+	}
+	.menu-tree-nested > li {
+		@apply relative pl-3;
+	}
+	.menu-tree-nested > li::before {
+		content: '';
+		@apply absolute left-0 top-3 w-2.5 border-t border-dotted border-muted-foreground/40;
+	}
+	.menu-group,
+	.menu-leaf {
+		@apply flex w-full cursor-pointer items-center gap-2 rounded px-1.5 py-[3px] text-left text-[13px] font-semibold text-foreground;
+	}
+	.menu-leaf:hover,
+	.menu-leaf:focus-visible,
+	.menu-group:hover,
+	.menu-group:focus-visible {
+		@apply bg-primary text-primary-foreground outline-none;
+	}
+	.menu-group::before {
+		content: '▸';
+		@apply text-[11px] text-primary;
+	}
+	.menu-group.open::before {
+		content: '▾';
+	}
+	.menu-leaf::before {
+		content: '';
+		@apply size-1.5 shrink-0 rounded-full bg-muted-foreground/70;
+	}
+	.menu-group:hover::before,
+	.menu-leaf:hover::before {
+		@apply text-primary-foreground bg-current;
+	}
+	.menu-group:hover::before {
+		background: none;
+	}
+	.menu-sep {
+		@apply my-1 border-t;
+	}
+
+	/* ---- Workspace background ---- */
+	.workspace {
+		@apply relative overflow-hidden;
+		background:
+			radial-gradient(900px 420px at 100% 0%, color-mix(in oklch, var(--primary) 14%, transparent), transparent 70%),
+			radial-gradient(700px 380px at 0% 100%, color-mix(in oklch, var(--success) 9%, transparent), transparent 70%),
+			radial-gradient(circle, color-mix(in oklch, var(--sidebar) 8%, transparent) 1px, transparent 1.2px) 0 0 / 18px 18px,
+			linear-gradient(180deg, oklch(0.975 0.004 264), oklch(0.945 0.008 264));
+	}
+	.workspace::after {
+		content: '';
+		@apply pointer-events-none absolute -bottom-16 -right-16 size-[340px] rounded-full;
+		border: 46px solid color-mix(in oklch, var(--primary) 5%, transparent);
+	}
+	.status-line {
+		@apply absolute inset-x-0 bottom-3 text-center text-sm font-semibold text-muted-foreground;
+	}
+
+	/* ---- Window look for every page except home and dashboard ---- */
+	.window {
+		@apply overflow-hidden rounded-xl border bg-background shadow-sm;
+	}
+	.window-body {
+		@apply p-3 sm:p-4;
+	}
+	.window-keys {
+		@apply flex flex-wrap gap-x-4 gap-y-1 border-t bg-muted/50 px-4 py-1.5 text-[11px] text-muted-foreground;
+	}
+	.window-keys b {
+		@apply font-semibold text-foreground;
+	}
+	.window .table-base th {
+		@apply border border-border bg-muted;
+	}
+	.window .table-base td {
+		@apply border border-border py-1.5;
+	}
+	.window .table-base tbody tr:nth-child(even) {
+		@apply bg-muted/30;
+	}
+	.window .table-base tbody tr:hover {
+		@apply bg-accent;
+	}
+}
+
+/* Unlayered so it can restyle PageHeader's own utility classes inside a window. */
+.window .page-header {
+	@apply -mx-3 -mt-3 mb-3 items-center bg-primary px-3 py-2 text-primary-foreground sm:-mx-4 sm:-mt-4 sm:mb-4 sm:px-4;
+}
+.window .page-header h1 {
+	@apply text-base sm:text-lg;
+}
+.window .page-header p,
+.window .page-header a[data-back] {
+	@apply text-primary-foreground/80;
+}
+.window .page-header a[data-back]:hover {
+	@apply text-primary-foreground;
+}
+/* Primary buttons would vanish on the blue title bar, so invert them. */
+.window .page-header .bg-primary {
+	@apply bg-background text-primary hover:bg-background/90;
 }
 
 @media print {
 	.no-print {
 		display: none !important;
 	}
-	body {
+	body,
+	.workspace {
 		background: white !important;
+	}
+	.workspace::after,
+	.window-keys {
+		display: none !important;
+	}
+	.window .page-header {
+		background: none !important;
+		color: inherit !important;
+		margin: 0 0 12px !important;
+		padding: 0 !important;
 	}
 	.print-full {
 		margin: 0 !important;

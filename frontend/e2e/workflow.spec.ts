@@ -15,8 +15,11 @@ const VENDOR = `E2E Vendor ${run}`;
 test.describe.configure({ mode: 'serial' });
 
 test('complete accounting & inventory workflow', async ({ page }) => {
-	// ---- Login -> Dashboard -------------------------------------------------
+	// ---- Login -> Home -> Dashboard -----------------------------------------
 	await login(page);
+	await expect(page.getByTestId('home-summary')).toBeVisible();
+	await page.keyboard.press('Alt+c');
+	await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Dashboard' }).click();
 	await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
 	await expect(page.getByTestId('dashboard-cards')).toContainText("Today's Sales");
 
