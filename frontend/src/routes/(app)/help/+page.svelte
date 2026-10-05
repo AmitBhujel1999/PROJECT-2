@@ -4,7 +4,7 @@
 
 	const keys = [
 		['Alt + C / A / T / D / R / H', 'Open the Company, Administration, Transactions, Display, Reports or Help menu'],
-		['Esc', 'Close the open menu; otherwise go back (or to Home)'],
+		['Esc', 'Close the open menu; otherwise go back (or to the Dashboard)'],
 		['F2', 'Add a new record on list pages (new sale, new expense, …)'],
 		['F5', 'Print the current page'],
 		['Ctrl + K', 'Global search: products, parties, invoices, bills, receipts, payments, expenses'],
@@ -14,7 +14,7 @@
 
 <svelte:head><title>Keyboard Shortcuts · Accounting</title></svelte:head>
 
-<PageHeader title="Keyboard Shortcuts" description="Work without the mouse." back={{ href: '/', label: 'Home' }} />
+<PageHeader title="Keyboard Shortcuts" description="Work without the mouse." back={{ href: '/dashboard', label: 'Dashboard' }} />
 
 <Card bodyClass="p-0">
 	<table class="table-base">

@@ -16,8 +16,8 @@
 	let mobileOpen = $state(false);
 
 	const menus = $derived(MENUS.map((m) => ({ ...m, items: filterMenu(m.items, (p) => auth.can(p)) })).filter((m) => m.items.length));
-	// Home and dashboard keep their own full-width layout; every other page sits in a window.
-	const bare = $derived(page.url.pathname === '/' || page.url.pathname === '/dashboard');
+	// The dashboard keeps its own full-width layout; every other page sits in a window.
+	const bare = $derived(page.url.pathname === '/dashboard');
 	const fiscalYear = nepaliFiscalYear();
 
 	$effect(() => {
@@ -62,7 +62,7 @@
 			}
 			if (bare || dialogOpen() || typing(document.activeElement)) return;
 			const back = document.querySelector<HTMLAnchorElement>('[data-back]');
-			goto(back?.getAttribute('href') ?? '/');
+			goto(back?.getAttribute('href') ?? '/dashboard');
 			return;
 		}
 		if (e.key === 'F2' && !dialogOpen()) {
@@ -87,7 +87,7 @@
 		<button class="rounded-md p-1.5 text-white/80 hover:bg-white/10 hover:text-white md:hidden" onclick={() => (mobileOpen = true)} aria-label="Open navigation" data-testid="mobile-menu">
 			<Menu class="size-5" />
 		</button>
-		<a href="/" class="mr-1 grid size-6 shrink-0 place-items-center rounded bg-primary text-xs font-bold text-white" title="Home">A</a>
+		<a href="/dashboard" class="mr-1 grid size-6 shrink-0 place-items-center rounded bg-primary text-xs font-bold text-white" title="Dashboard">A</a>
 
 		<nav class="hidden items-center md:flex" aria-label="Main navigation">
 			{#each menus as menu (menu.label)}

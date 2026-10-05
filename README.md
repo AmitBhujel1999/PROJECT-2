@@ -105,8 +105,7 @@ trends, receipts vs payments, top products, stock value by product.
 
 **Classic interface** — top menu bar (Company, Administration, Transactions,
 Display, Reports, Help) with tree-style menus opened by Alt + the underlined
-letter, a home screen with quick actions and recent activity, and every page
-in a window with a title bar. Keys: F2 add, F5 print, Esc back, Ctrl+K search.
+letter, and every page except the dashboard in a window with a title bar. Keys: F2 add, F5 print, Esc back, Ctrl+K search.
 The dashboard keeps its original layout. The status line shows the Nepali
 fiscal year (e.g. F.Y. 2083-84).
 

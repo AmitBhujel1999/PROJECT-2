@@ -7,7 +7,7 @@ export async function login(page: Page, user = ADMIN.user, password = ADMIN.pass
 	await page.fill('#username', user);
 	await page.fill('#password', password);
 	await page.click('button[type=submit]');
-	await page.waitForURL((url) => url.pathname === '/');
+	await page.waitForURL(/\/dashboard/);
 }
 
 /** Pick an option in one of our async comboboxes (server-side search). */

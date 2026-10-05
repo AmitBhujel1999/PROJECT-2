@@ -30,7 +30,6 @@ export const MENUS: TopMenu[] = [
 		label: 'Company',
 		key: 'c',
 		items: [
-			{ label: 'Home', href: '/' },
 			{ label: 'Dashboard', href: '/dashboard', perm: 'dashboard.view' },
 			{ label: 'Business Settings', href: '/settings', perm: 'settings.view' },
 			'separator',
