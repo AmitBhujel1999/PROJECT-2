@@ -32,6 +32,9 @@
 	const askDateSystem = $derived(auth.settings?.date_system === '' && auth.can('settings.manage'));
 
 	const REPORTS = [
+		{ href: '/reports/profit-loss', label: 'Profit & Loss', perm: 'reports.view' },
+		{ href: '/reports/balance-sheet', label: 'Balance Sheet', perm: 'reports.view' },
+		{ href: '/reports/cash-flow', label: 'Cash Flow', perm: 'reports.view' },
 		{ href: '/reports/day-book', label: 'Day Book', perm: 'reports.view' },
 		{ href: '/reports/sales', label: 'Sales', perm: 'reports.view' },
 		{ href: '/reports/purchases', label: 'Purchases', perm: 'reports.view' },

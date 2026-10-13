@@ -485,3 +485,62 @@ export interface LedgerBook {
 	end_date: string;
 	entries: { date: string; voucher_id: number; number: string; narration: string; debit: string; credit: string; balance: DrCr }[];
 }
+
+export interface StatementRow {
+	id?: number | null;
+	name: string;
+	amount: string;
+	link?: string;
+}
+
+export interface ProfitLoss {
+	start_date: string | null;
+	end_date: string;
+	sales: string;
+	direct_income: StatementRow[];
+	opening_stock: string;
+	opening_stock_added: string;
+	purchases: string;
+	closing_stock: string;
+	cost_of_goods_sold: string;
+	direct_expenses: StatementRow[];
+	gross_profit: string;
+	indirect_income: StatementRow[];
+	expense_categories: StatementRow[];
+	indirect_expenses: StatementRow[];
+	total_indirect_expenses: string;
+	net_profit: string;
+}
+
+export interface StatementGroup {
+	key: string;
+	label: string;
+	rows: StatementRow[];
+	total: string;
+}
+
+export interface BalanceSheet {
+	as_of: string;
+	liabilities: StatementGroup[];
+	assets: StatementGroup[];
+	total_liabilities: string;
+	total_assets: string;
+	difference: string;
+	net_profit: string;
+}
+
+export interface CashFlow {
+	start_date: string;
+	end_date: string;
+	opening_cash: string;
+	operating: StatementRow[];
+	investing: StatementRow[];
+	financing: StatementRow[];
+	net_operating: string;
+	net_investing: string;
+	net_financing: string;
+	net_change: string;
+	closing_cash: string;
+	difference: string;
+	accounts: StatementRow[];
+}

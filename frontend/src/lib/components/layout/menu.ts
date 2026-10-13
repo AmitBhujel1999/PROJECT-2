@@ -184,6 +184,16 @@ export const MENUS: TopMenu[] = [
 		label: 'Reports',
 		key: 'r',
 		items: [
+			{
+				label: 'Financial Statements',
+				open: true,
+				children: [
+					{ label: 'Profit & Loss', href: '/reports/profit-loss', perm: 'reports.view' },
+					{ label: 'Balance Sheet', href: '/reports/balance-sheet', perm: 'reports.view' },
+					{ label: 'Cash Flow', href: '/reports/cash-flow', perm: 'reports.view' }
+				]
+			},
+			'separator',
 			{ label: 'Day Book', href: '/reports/day-book', perm: 'reports.view' },
 			'separator',
 			{ label: 'Sales Report', href: '/reports/sales', perm: 'reports.view' },

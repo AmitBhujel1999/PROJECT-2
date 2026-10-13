@@ -106,3 +106,9 @@ export function parseBs(text: string): BsDate | null {
 		return null;
 	}
 }
+
+/** First day (A.D. ISO) of the Nepali fiscal year (Shrawan 1) containing ``iso``. */
+export function fiscalYearStart(iso: string): string {
+	const bs = adToBs(iso);
+	return bsToAd({ year: bs.month >= 4 ? bs.year : bs.year - 1, month: 4, day: 1 });
+}

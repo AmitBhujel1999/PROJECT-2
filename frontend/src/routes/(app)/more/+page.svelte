@@ -9,7 +9,7 @@
 	function leaves(nodes: MenuNode[]): MenuLeaf[] {
 		return nodes.flatMap((n) => (n === 'separator' ? [] : isGroup(n) ? leaves(n.children) : [n]));
 	}
-	const ORDER = ['Sales', 'Purchase', 'Customer Receipts', 'Vendor Payments', 'Expenses', 'Journal Voucher', 'Contra (Cash ↔ Bank)', 'Other transactions', 'Cash & Bank', 'Journal', 'Masters', 'Inventory',
+	const ORDER = ['Sales', 'Purchase', 'Customer Receipts', 'Vendor Payments', 'Expenses', 'Journal Voucher', 'Contra (Cash ↔ Bank)', 'Other transactions', 'Financial Statements', 'Cash & Bank', 'Journal', 'Masters', 'Inventory',
 		'Accounts Receivable', 'Accounts Payable', 'Reports', 'Users', 'Administration', 'Help'];
 	const rank = (title: string) => (ORDER.includes(title) ? ORDER.indexOf(title) : ORDER.length);
 	const sections = $derived(
