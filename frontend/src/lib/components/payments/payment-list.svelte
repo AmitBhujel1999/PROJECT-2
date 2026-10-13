@@ -2,14 +2,14 @@
 	import { Plus } from '@lucide/svelte';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { ListState } from '$lib/stores/list.svelte';
-	import { money, date as fmtDate, PAYMENT_METHODS } from '$lib/utilities/format';
+	import { money, date as fmtDate } from '$lib/utilities/format';
 	import type { PaymentDoc } from '$lib/types';
 	import { PAY_SIDES, type PayKind } from './config';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import Card from '$lib/components/ui/card.svelte';
 	import Input from '$lib/components/ui/input.svelte';
-	import Select from '$lib/components/ui/select.svelte';
+	import AccountSelect from '$lib/components/cashbank/account-select.svelte';
 	import SearchInput from '$lib/components/ui/search-input.svelte';
 	import Pagination from '$lib/components/ui/pagination.svelte';
 	import TableState from '$lib/components/ui/table-state.svelte';
@@ -23,7 +23,7 @@
 	const side = PAY_SIDES[kind];
 	const list = new ListState<PaymentDoc>(`${side.api}/`);
 	list.load();
-	let method = $state('');
+	let account = $state('');
 	let start = $state('');
 	let end = $state('');
 	let unallocated = $state(false);
@@ -42,7 +42,7 @@
 	<div>
 		{#each list.items as r (r.id)}
 			<MCard href="{side.route}/{r.id}" title={r.number} subtitle={r.party_name}
-				meta="{fmtDate(r.date)} · {r.payment_method_display}{r.reference_number ? ` · ${r.reference_number}` : ''}"
+				meta="{fmtDate(r.date)} · {r.account_name}{r.reference_number ? ` · ${r.reference_number}` : ''}"
 				amount={money(r.amount)} muted={r.status === 'CANCELLED'}>
 				{#snippet badge()}
 					{#if r.status === 'CANCELLED'}<StatusBadge status="CANCELLED" />
@@ -57,14 +57,14 @@
 <Card bodyClass="p-0">
 	<div class="flex flex-wrap items-end gap-2 border-b p-3">
 		<SearchInput placeholder="Number, {side.partyLabel.toLowerCase()}, reference…" onSearch={(v) => list.set('search', v)} />
-		<Select class="w-40" bind:value={method} onchange={() => list.set('payment_method', method)} options={PAYMENT_METHODS} placeholder="Any method" aria-label="Payment method" />
+		<AccountSelect class="w-44" bind:value={account} onchange={() => list.set('account', account)} placeholder="Any account" aria-label="Cash/bank account" />
 		<label class="grid gap-1 text-xs text-muted-foreground">From<Input type="date" bind:value={start} class="h-9 w-40" onchange={() => list.set('start_date', start)} /></label>
 		<label class="grid gap-1 text-xs text-muted-foreground">To<Input type="date" bind:value={end} class="h-9 w-40" onchange={() => list.set('end_date', end)} /></label>
 		<label class="flex h-9 items-center gap-2 text-sm"><input type="checkbox" bind:checked={unallocated} onchange={() => list.set('unallocated', unallocated ? 'true' : '')} /> Unallocated only</label>
 	</div>
 	<div class="overflow-x-auto">
 		<table class="table-base">
-			<thead><tr><th>Number</th><th>Date</th><th>{side.partyLabel}</th><th>Method</th><th>Reference</th><th class="num">Amount</th><th class="num">Allocated</th><th class="num">Unallocated</th><th>Status</th></tr></thead>
+			<thead><tr><th>Number</th><th>Date</th><th>{side.partyLabel}</th><th>{kind === 'receipt' ? 'Received in' : 'Paid from'}</th><th>Reference</th><th class="num">Amount</th><th class="num">Allocated</th><th class="num">Unallocated</th><th>Status</th></tr></thead>
 			<tbody>
 				<TableState loading={list.loading} error={list.error} empty={!list.items.length} colspan={9} />
 				{#each list.items as r (r.id)}
@@ -72,7 +72,7 @@
 						<td><a class="font-medium text-primary hover:underline" href="{side.route}/{r.id}">{r.number}</a></td>
 						<td class="whitespace-nowrap">{fmtDate(r.date)}</td>
 						<td>{r.party_name}</td>
-						<td>{r.payment_method_display}</td>
+						<td>{r.account_name}</td>
 						<td class="text-muted-foreground">{r.reference_number}</td>
 						<td class="num font-medium">{money(r.amount)}</td>
 						<td class="num">{money(r.allocated_amount, true)}</td>

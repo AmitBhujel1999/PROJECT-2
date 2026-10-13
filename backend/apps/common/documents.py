@@ -132,7 +132,8 @@ class PaymentInputSerializer(serializers.Serializer):
 
     pay_in_full = serializers.BooleanField(required=False, default=False)
     amount = serializers.DecimalField(max_digits=16, decimal_places=2, min_value=Decimal("0.01"), required=False, allow_null=True)
-    payment_method = serializers.ChoiceField(choices=PaymentMethod.choices, required=False, default=PaymentMethod.CASH)
+    payment_method = serializers.ChoiceField(choices=PaymentMethod.choices, required=False)
+    account = serializers.IntegerField(min_value=1, required=False, allow_null=True)
     reference_number = serializers.CharField(max_length=60, required=False, allow_blank=True, default="")
 
     def validate(self, attrs):

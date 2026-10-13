@@ -5,18 +5,18 @@
 	import { api, ApiError, fieldErrors } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
-	import { today, PAYMENT_METHODS, toCents } from '$lib/utilities/format';
+	import { today, toCents } from '$lib/utilities/format';
 	import type { OpenDocument, Party, PaymentDoc } from '$lib/types';
 	import { PAY_SIDES, type PayKind } from './config';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import Card from '$lib/components/ui/card.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import Input from '$lib/components/ui/input.svelte';
-	import Select from '$lib/components/ui/select.svelte';
 	import Textarea from '$lib/components/ui/textarea.svelte';
 	import Field from '$lib/components/ui/field.svelte';
 	import PartyPicker from '$lib/components/parties/party-picker.svelte';
 	import AllocationTable from './allocation-table.svelte';
+	import AccountSelect from '$lib/components/cashbank/account-select.svelte';
 
 	let { kind }: { kind: PayKind } = $props();
 	// svelte-ignore state_referenced_locally
@@ -26,7 +26,7 @@
 	let partyLabel = $state('');
 	let date = $state(today());
 	let amount = $state('');
-	let method = $state('CASH');
+	let account = $state<number | null>(null);
 	let reference = $state('');
 	let notes = $state('');
 	let mode = $state<'auto' | 'manual' | 'none'>('auto');
@@ -73,7 +73,7 @@
 				party: partyId,
 				date,
 				amount,
-				payment_method: method,
+				account,
 				reference_number: reference,
 				notes,
 				allocations,
@@ -102,7 +102,7 @@
 			<Field label="Amount ({auth.currency})" for="pay-amount" required error={errors.amount}>
 				<Input id="pay-amount" type="number" min="0.01" step="0.01" bind:value={amount} required class="text-right" />
 			</Field>
-			<Field label="Payment method" for="pay-method"><Select id="pay-method" bind:value={method} options={PAYMENT_METHODS} /></Field>
+			<Field label={kind === 'receipt' ? 'Received in' : 'Paid from'} for="pay-account" error={errors.account}><AccountSelect id="pay-account" bind:value={account} /></Field>
 			<Field label="Reference no." for="pay-ref" hint="Cheque / bank / transaction ref."><Input id="pay-ref" bind:value={reference} maxlength={60} /></Field>
 			<Field label="Notes" for="pay-notes" class="sm:col-span-2"><Textarea id="pay-notes" bind:value={notes} rows={1} /></Field>
 		</div>

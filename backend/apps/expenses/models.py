@@ -52,6 +52,10 @@ class Expense(TimeStampedModel):
     tax_amount = models.DecimalField(**MONEY_FIELD, default=ZERO)
     total_amount = models.DecimalField(**MONEY_FIELD)
     payment_method = models.CharField(max_length=10, choices=PaymentMethod.choices, default=PaymentMethod.CASH)
+    account = models.ForeignKey(
+        "cashbank.MoneyAccount", on_delete=models.PROTECT, related_name="+",
+        help_text="Cash/bank account the expense was paid from.",
+    )
     reference_number = models.CharField(max_length=60, blank=True, default="", help_text="Bill no., cheque no., bank ref, etc.")
     notes = models.TextField(blank=True, default="")
     status = models.CharField(max_length=10, choices=DocumentStatus.choices, default=DocumentStatus.ACTIVE, db_index=True)

@@ -21,6 +21,10 @@ class PartyPayment(TimeStampedModel):
     amount = models.DecimalField(**MONEY_FIELD)
     allocated_amount = models.DecimalField(**MONEY_FIELD, default=ZERO)
     payment_method = models.CharField(max_length=10, choices=PaymentMethod.choices, default=PaymentMethod.CASH)
+    account = models.ForeignKey(
+        "cashbank.MoneyAccount", on_delete=models.PROTECT, related_name="+",
+        help_text="Cash/bank account the money came into or went out of.",
+    )
     reference_number = models.CharField(max_length=60, blank=True, default="", help_text="Cheque no., bank ref, etc.")
     notes = models.TextField(blank=True, default="")
     status = models.CharField(max_length=10, choices=DocumentStatus.choices, default=DocumentStatus.ACTIVE, db_index=True)

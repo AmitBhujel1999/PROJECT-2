@@ -99,7 +99,7 @@
 		<div class="rounded-xl border bg-card p-3"><p class="text-xs text-muted-foreground">Amount</p><p class="text-lg font-semibold tabular-nums">{money(r.amount)}</p></div>
 		<div class="rounded-xl border bg-card p-3"><p class="text-xs text-muted-foreground">Allocated</p><p class="text-lg font-semibold tabular-nums" data-testid="p-allocated">{money(r.allocated_amount)}</p></div>
 		<div class="rounded-xl border bg-card p-3"><p class="text-xs text-muted-foreground">Unallocated (advance)</p><p class="text-lg font-semibold tabular-nums text-amber-700" data-testid="p-unallocated">{money(r.unallocated_amount)}</p></div>
-		<div class="rounded-xl border bg-card p-3"><p class="text-xs text-muted-foreground">Method</p><p class="font-semibold">{r.payment_method_display}</p><p class="text-xs text-muted-foreground">{r.reference_number}</p></div>
+		<div class="rounded-xl border bg-card p-3"><p class="text-xs text-muted-foreground">{kind === 'receipt' ? 'Received in' : 'Paid from'}</p><p class="font-semibold">{r.account_name}</p><p class="text-xs text-muted-foreground">{r.reference_number}</p></div>
 	</div>
 
 	<Card title="Allocations" bodyClass="p-0">

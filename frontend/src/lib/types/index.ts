@@ -155,6 +155,8 @@ export interface PaymentDoc {
 	unallocated_amount: Money;
 	payment_method: string;
 	payment_method_display: string;
+	account: number;
+	account_name: string;
 	reference_number: string;
 	notes: string;
 	status: DocStatus;
@@ -323,6 +325,8 @@ export interface Expense {
 	total_amount: Money;
 	payment_method: string;
 	payment_method_display: string;
+	account: number;
+	account_name: string;
 	reference_number: string;
 	status: DocStatus;
 	created_at: string;
@@ -332,4 +336,83 @@ export interface Expense {
 	cancelled_by_name?: string | null;
 	cancel_reason?: string;
 	updated_at?: string;
+}
+
+export type AccountKind = 'CASH' | 'BANK' | 'WALLET' | 'OTHER';
+
+/** A cash/bank account the business keeps money in. */
+export interface MoneyAccount {
+	id: number;
+	name: string;
+	kind: AccountKind;
+	kind_display: string;
+	account_number: string;
+	opening_balance: string;
+	notes: string;
+	is_active: boolean;
+	/** null when the user may not see balances. */
+	balance: string | null;
+}
+
+export interface AccountBookEntry {
+	date: string;
+	voucher_type: 'Receipt' | 'Payment' | 'Expense' | 'Contra';
+	number: string;
+	object_id: number;
+	particulars: string;
+	reference_number: string;
+	money_in: string;
+	money_out: string;
+	balance: string;
+}
+
+export interface AccountBook {
+	account: number;
+	account_name: string;
+	opening_balance: string;
+	total_in: string;
+	total_out: string;
+	closing_balance: string;
+	start_date: string | null;
+	end_date: string;
+	entries: AccountBookEntry[];
+}
+
+export interface Contra {
+	id: number;
+	contra_number: string;
+	date: string;
+	from_account: number;
+	from_account_name: string;
+	to_account: number;
+	to_account_name: string;
+	amount: string;
+	reference_number: string;
+	notes: string;
+	status: DocStatus;
+	cancelled_at: string | null;
+	cancel_reason: string;
+	created_at: string;
+	created_by_name: string | null;
+	cancelled_by_name: string | null;
+}
+
+export interface DayBookEntry {
+	date: string;
+	voucher_type: string;
+	number: string;
+	object_id: number;
+	link: string;
+	particulars: string;
+	account_name: string;
+	amount: string;
+	status: DocStatus;
+}
+
+export interface DayBook {
+	start_date: string;
+	end_date: string;
+	count: number;
+	totals: { voucher_type: string; amount: string }[];
+	entries: DayBookEntry[];
 }

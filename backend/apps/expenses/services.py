@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from apps.audit.models import AuditAction
 from apps.audit.services import record, snapshot
+from apps.cashbank.services import resolve_account
 from apps.common.exceptions import BusinessError
 from apps.common.models import DocumentSequence, DocumentStatus
 from apps.common.money import HUNDRED, ZERO, money, rate
@@ -132,6 +133,7 @@ def create_expense(*, data: dict, user) -> Expense:
     category = _category(data["category"])
     vendor = _vendor(data.get("vendor"))
     totals = calculate_expense(data["amount"], data.get("tax_rate"))
+    account, payment_method = resolve_account(data.get("account"), data.get("payment_method"))
     expense = Expense.objects.create(
         expense_number=DocumentSequence.next_number(DocumentSequence.EXPENSE),
         date=data["date"],
@@ -139,7 +141,8 @@ def create_expense(*, data: dict, user) -> Expense:
         vendor=vendor,
         payee="" if vendor else data.get("payee", "").strip(),
         description=data["description"].strip(),
-        payment_method=data.get("payment_method", "CASH"),
+        payment_method=payment_method,
+        account=account,
         reference_number=data.get("reference_number", ""),
         notes=data.get("notes", ""),
         created_by=user,

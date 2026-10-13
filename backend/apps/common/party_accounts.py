@@ -149,14 +149,18 @@ def create_payment(
     party_id: int,
     date: dt.date,
     amount: Decimal,
-    payment_method: str,
+    payment_method: str | None = None,
+    account: int | None = None,
     reference_number: str = "",
     notes: str = "",
     allocations: list[dict] | None = None,
     auto_allocate: bool = False,
     user,
 ):
+    from apps.cashbank.services import resolve_account
+
     party = _party(cfg, party_id)
+    money_account, payment_method = resolve_account(account, payment_method)
     amount = money(amount)
     if amount <= 0:
         raise BusinessError("Amount must be greater than zero.", code="INVALID_AMOUNT")
@@ -167,6 +171,7 @@ def create_payment(
             "date": date,
             "amount": amount,
             "payment_method": payment_method,
+            "account": money_account,
             "reference_number": reference_number,
             "notes": notes,
             "created_by": user,
@@ -338,7 +343,8 @@ def pay_on_creation(cfg: AccountConfig, doc, *, payment: dict, user):
         party_id=getattr(doc, f"{cfg.doc_party}_id"),
         date=doc.date,
         amount=amount,
-        payment_method=payment.get("payment_method", "CASH"),
+        payment_method=payment.get("payment_method"),
+        account=payment.get("account"),
         reference_number=payment.get("reference_number", ""),
         notes=f"Paid against {cfg.doc_no(doc)}",
         allocations=[{"document": doc.pk, "amount": amount}],
@@ -565,7 +571,7 @@ def _entry(cfg: AccountConfig, obj, *, is_document: bool, reversal: bool) -> dic
     if is_document:
         description = f"{label} {number}" + (f" cancelled: {obj.cancel_reason}" if reversal else "")
     else:
-        method = obj.get_payment_method_display()
+        method = obj.account.name if obj.account_id else obj.get_payment_method_display()
         ref = f" ({obj.reference_number})" if obj.reference_number else ""
         description = f"{label} - {method}{ref}" + (f" cancelled: {obj.cancel_reason}" if reversal else "")
     order_ts = obj.cancelled_at if reversal else obj.created_at

@@ -33,7 +33,8 @@ class PaymentInputSerializer(serializers.Serializer):
     party = serializers.IntegerField(min_value=1)
     date = serializers.DateField()
     amount = serializers.DecimalField(max_digits=16, decimal_places=2, min_value=Decimal("0.01"))
-    payment_method = serializers.ChoiceField(choices=PaymentMethod.choices, default=PaymentMethod.CASH)
+    payment_method = serializers.ChoiceField(choices=PaymentMethod.choices, required=False)
+    account = serializers.IntegerField(min_value=1, required=False, allow_null=True)
     reference_number = serializers.CharField(max_length=60, required=False, allow_blank=True, default="")
     notes = serializers.CharField(max_length=2000, required=False, allow_blank=True, default="")
     allocations = AllocationInputSerializer(many=True, required=False)
@@ -67,6 +68,8 @@ def payment_payload(cfg: engine.AccountConfig, payment, *, detail=False) -> dict
         "unallocated_amount": payment.unallocated_amount,
         "payment_method": payment.payment_method,
         "payment_method_display": payment.get_payment_method_display(),
+        "account": payment.account_id,
+        "account_name": payment.account.name if payment.account_id else "",
         "reference_number": payment.reference_number,
         "notes": payment.notes,
         "status": payment.status,
@@ -128,12 +131,14 @@ class BasePaymentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixin
 
     def get_queryset(self):
         cfg = self.cfg
-        qs = cfg.payment_model.objects.select_related(cfg.pay_party, "created_by").order_by("-date", "-id")
+        qs = cfg.payment_model.objects.select_related(cfg.pay_party, "created_by", "account").order_by("-date", "-id")
         params = self.request.query_params
         if params.get("party"):
             qs = qs.filter(**{f"{cfg.pay_party}_id": params["party"]})
         if params.get("status"):
             qs = qs.filter(status=params["status"])
+        if params.get("account"):
+            qs = qs.filter(account_id=params["account"])
         if params.get("payment_method"):
             qs = qs.filter(payment_method=params["payment_method"])
         if params.get("unallocated") == "true":
@@ -170,7 +175,8 @@ class BasePaymentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixin
             party_id=d["party"],
             date=d["date"],
             amount=d["amount"],
-            payment_method=d["payment_method"],
+            payment_method=d.get("payment_method"),
+            account=d.get("account"),
             reference_number=d.get("reference_number", ""),
             notes=d.get("notes", ""),
             allocations=d.get("allocations") or None,

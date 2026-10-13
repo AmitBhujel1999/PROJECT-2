@@ -46,7 +46,7 @@
 		<div class="rounded-xl border bg-card p-3"><p class="text-xs text-muted-foreground">Amount (excl. tax)</p><p class="text-lg font-semibold tabular-nums">{money(e.amount)}</p></div>
 		<div class="rounded-xl border bg-card p-3"><p class="text-xs text-muted-foreground">{auth.taxLabel} @ {e.tax_rate}%</p><p class="text-lg font-semibold tabular-nums">{money(e.tax_amount)}</p></div>
 		<div class="rounded-xl border bg-card p-3"><p class="text-xs text-muted-foreground">Total ({auth.currency})</p><p class="text-lg font-semibold tabular-nums" data-testid="expense-total">{money(e.total_amount)}</p></div>
-		<div class="rounded-xl border bg-card p-3"><p class="text-xs text-muted-foreground">Method</p><p class="font-semibold">{e.payment_method_display}</p><p class="text-xs text-muted-foreground">{e.reference_number}</p></div>
+		<div class="rounded-xl border bg-card p-3"><p class="text-xs text-muted-foreground">Paid from</p><p class="font-semibold">{e.account_name}</p><p class="text-xs text-muted-foreground">{e.reference_number}</p></div>
 	</div>
 
 	<Card title="Details">

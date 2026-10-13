@@ -69,7 +69,7 @@ class ExpenseFilter(django_filters.FilterSet):
 
     class Meta:
         model = Expense
-        fields = ["category", "vendor", "payment_method", "status"]
+        fields = ["category", "vendor", "account", "payment_method", "status"]
 
 
 class ExpenseViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
@@ -89,7 +89,7 @@ class ExpenseViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cr
     ordering = ["-date", "-id"]
 
     def get_queryset(self):
-        return Expense.objects.select_related("category", "vendor", "created_by", "cancelled_by")
+        return Expense.objects.select_related("category", "vendor", "account", "created_by", "cancelled_by")
 
     def get_serializer_class(self):
         return ExpenseListSerializer if self.action == "list" else ExpenseDetailSerializer

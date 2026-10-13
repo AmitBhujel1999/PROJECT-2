@@ -216,7 +216,7 @@ EXPENSE_COLUMNS = [
     Column("category_name", "Category", width=1.4),
     Column("description", "Description", width=2.2),
     Column("paid_to", "Paid To", width=1.5),
-    Column("payment_method", "Method", width=0.8),
+    Column("account_name", "Paid From", width=1.0),
     Column("amount", "Amount", numeric=True),
     Column("tax_amount", "Tax", numeric=True),
     Column("total_amount", "Total", numeric=True),
@@ -231,7 +231,7 @@ class ExpenseReportView(APIView):
     permission_map = {"read": "reports.view"}
 
     def queryset(self, request):
-        qs = Expense.objects.select_related("category", "vendor")
+        qs = Expense.objects.select_related("category", "vendor", "account")
         start = parse_date_param(request, "start_date")
         end = parse_date_param(request, "end_date")
         if start:
@@ -247,6 +247,9 @@ class ExpenseReportView(APIView):
         method = request.query_params.get("payment_method")
         if method:
             qs = qs.filter(payment_method=method)
+        account = parse_int_param(request, "account")
+        if account:
+            qs = qs.filter(account_id=account)
         doc_status = request.query_params.get("status", DocumentStatus.ACTIVE)
         if doc_status != "ALL":
             qs = qs.filter(status=doc_status)
@@ -291,6 +294,8 @@ class ExpenseReportView(APIView):
             "description": e.description,
             "paid_to": e.paid_to,
             "payment_method": e.get_payment_method_display(),
+            "account": e.account_id,
+            "account_name": e.account.name,
             "amount": e.amount,
             "tax_amount": e.tax_amount,
             "total_amount": e.total_amount,

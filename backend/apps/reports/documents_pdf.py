@@ -144,7 +144,7 @@ def payment_pdf(payment, *, kind: str) -> bytes:
     number = payment.receipt_number if is_receipt else payment.payment_number
     party = payment.customer if is_receipt else payment.vendor
     title = ("RECEIPT" if is_receipt else "PAYMENT VOUCHER") + (" (CANCELLED)" if payment.status == DocumentStatus.CANCELLED else "")
-    meta = [("Number", number), ("Date", format_date(payment.date, bs=bs)), ("Method", payment.get_payment_method_display())]
+    meta = [("Number", number), ("Date", format_date(payment.date, bs=bs)), ("Received In" if is_receipt else "Paid From", payment.account.name)]
     if payment.reference_number:
         meta.append(("Reference", payment.reference_number))
     story = _header(settings, title, meta, width)
@@ -173,7 +173,7 @@ def expense_pdf(expense) -> bytes:
     width = A4[0] - 24 * mm
     title = "EXPENSE VOUCHER" + (" (CANCELLED)" if expense.status == DocumentStatus.CANCELLED else "")
     meta = [("Number", expense.expense_number), ("Date", format_date(expense.date, bs=bs)),
-            ("Method", expense.get_payment_method_display())]
+            ("Paid From", expense.account.name)]
     if expense.reference_number:
         meta.append(("Reference", expense.reference_number))
     story = _header(settings, title, meta, width)

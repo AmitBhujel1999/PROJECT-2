@@ -115,13 +115,13 @@
 		{:else if tab === 'payments'}
 			<div class="overflow-x-auto">
 				<table class="table-base">
-					<thead><tr><th>{side.payLabel}</th><th>Date</th><th>Method</th><th class="num">Amount</th><th class="num">Unallocated</th><th>Status</th></tr></thead>
+					<thead><tr><th>{side.payLabel}</th><th>Date</th><th>Account</th><th class="num">Amount</th><th class="num">Unallocated</th><th>Status</th></tr></thead>
 					<tbody>
 						<TableState loading={pays.loading} error={pays.error} empty={!pays.items.length} colspan={6} />
 						{#each pays.items as r (r.id)}
 							<tr>
 								<td><a class="text-primary hover:underline" href="{side.payRoute}/{r.id}">{r.number}</a></td>
-								<td>{fmtDate(r.date)}</td><td>{r.payment_method_display}</td>
+								<td>{fmtDate(r.date)}</td><td>{r.account_name}</td>
 								<td class="num">{money(r.amount)}</td><td class="num">{money(r.unallocated_amount, true)}</td>
 								<td><StatusBadge status={r.status} /></td>
 							</tr>

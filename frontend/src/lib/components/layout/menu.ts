@@ -56,7 +56,8 @@ export const MENUS: TopMenu[] = [
 					{ label: 'Products', href: '/products', perm: 'products.view' },
 					{ label: 'Customers', href: '/customers', perm: 'parties.view' },
 					{ label: 'Vendors', href: '/vendors', perm: 'parties.view' },
-					{ label: 'Expense Categories', href: '/expenses/categories', perm: 'expenses.view' }
+					{ label: 'Expense Categories', href: '/expenses/categories', perm: 'expenses.view' },
+					{ label: 'Cash & Bank Accounts', href: '/cash-bank', perm: 'cashbank.view' }
 				]
 			},
 			{
@@ -113,6 +114,13 @@ export const MENUS: TopMenu[] = [
 					{ label: 'List of Expenses', href: '/expenses', perm: 'expenses.view' }
 				]
 			},
+			{
+				label: 'Contra (Cash ↔ Bank)',
+				children: [
+					{ label: 'Add Contra', href: '/cash-bank/contra/new', perm: 'contra.create' },
+					{ label: 'List of Contra', href: '/cash-bank/contra', perm: 'cashbank.view' }
+				]
+			},
 			'separator',
 			{ label: 'Stock Adjustments', href: '/inventory/adjustments', perm: 'inventory.view' }
 		]
@@ -127,6 +135,14 @@ export const MENUS: TopMenu[] = [
 				children: [
 					{ label: 'Stock Register', href: '/inventory', perm: 'inventory.view' },
 					{ label: 'Stock Ledger', href: '/inventory/ledger', perm: 'inventory.view' }
+				]
+			},
+			{
+				label: 'Cash & Bank',
+				open: true,
+				children: [
+					{ label: 'Cash & Bank Accounts', href: '/cash-bank', perm: 'cashbank.view' },
+					{ label: 'Day Book', href: '/reports/day-book', perm: 'reports.view' }
 				]
 			},
 			{
@@ -153,6 +169,8 @@ export const MENUS: TopMenu[] = [
 		label: 'Reports',
 		key: 'r',
 		items: [
+			{ label: 'Day Book', href: '/reports/day-book', perm: 'reports.view' },
+			'separator',
 			{ label: 'Sales Report', href: '/reports/sales', perm: 'reports.view' },
 			{ label: 'Purchase Report', href: '/reports/purchases', perm: 'reports.view' },
 			{ label: 'Expense Report', href: '/reports/expenses', perm: 'reports.view' },

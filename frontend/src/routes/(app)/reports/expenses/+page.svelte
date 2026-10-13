@@ -3,7 +3,8 @@
 	import { api } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { ListState } from '$lib/stores/list.svelte';
-	import { money, date as fmtDate, PAYMENT_METHODS } from '$lib/utilities/format';
+	import { money, date as fmtDate } from '$lib/utilities/format';
+	import AccountSelect from '$lib/components/cashbank/account-select.svelte';
 	import type { ExpenseCategory, Paginated } from '$lib/types';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import Card from '$lib/components/ui/card.svelte';
@@ -23,6 +24,7 @@
 		description: string;
 		paid_to: string;
 		payment_method: string;
+		account_name: string;
 		amount: string;
 		tax_amount: string;
 		total_amount: string;
@@ -48,7 +50,7 @@
 
 	let start = $state('');
 	let end = $state('');
-	let method = $state('');
+	let account = $state('');
 	let status = $state('ACTIVE');
 	const s = $derived(list.summary);
 	const share = (v: string) => (s && Number(s.total_amount) > 0 ? ((Number(v) / Number(s.total_amount)) * 100).toFixed(1) : '0.0');
@@ -65,7 +67,7 @@
 		<label class="grid gap-1 text-xs text-muted-foreground">Start date<Input type="date" bind:value={start} onchange={() => list.set('start_date', start)} /></label>
 		<label class="grid gap-1 text-xs text-muted-foreground">End date<Input type="date" bind:value={end} onchange={() => list.set('end_date', end)} /></label>
 		<label class="grid gap-1 text-xs text-muted-foreground">Category<Select bind:value={category} onchange={() => list.set('category', category)} options={categories} placeholder="All categories" /></label>
-		<label class="grid gap-1 text-xs text-muted-foreground">Method<Select bind:value={method} onchange={() => list.set('payment_method', method)} options={PAYMENT_METHODS} placeholder="Any" /></label>
+		<label class="grid gap-1 text-xs text-muted-foreground">Paid from<AccountSelect bind:value={account} onchange={() => list.set('account', account)} placeholder="Any" /></label>
 		<label class="grid gap-1 text-xs text-muted-foreground">Status<Select bind:value={status} onchange={() => list.set('status', status)} options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'CANCELLED', label: 'Cancelled' }, { value: 'ALL', label: 'All' }]} /></label>
 	</div>
 </Card>
@@ -108,7 +110,7 @@
 <Card bodyClass="p-0">
 	<div class="overflow-x-auto">
 		<table class="table-base" data-testid="report-table">
-			<thead><tr><th>Date</th><th>Expense #</th><th>Category</th><th>Description</th><th>Paid to</th><th>Method</th><th class="num">Amount</th><th class="num">Tax</th><th class="num">Total</th><th>Status</th></tr></thead>
+			<thead><tr><th>Date</th><th>Expense #</th><th>Category</th><th>Description</th><th>Paid to</th><th>Paid from</th><th class="num">Amount</th><th class="num">Tax</th><th class="num">Total</th><th>Status</th></tr></thead>
 			<tbody>
 				<TableState loading={list.loading} error={list.error} empty={!list.items.length} colspan={10} />
 				{#each list.items as r (r.id)}
@@ -118,7 +120,7 @@
 						<td>{r.category_name}</td>
 						<td>{r.description}</td>
 						<td class="text-muted-foreground">{r.paid_to}</td>
-						<td>{r.payment_method}</td>
+						<td>{r.account_name}</td>
 						<td class="num">{money(r.amount)}</td>
 						<td class="num">{money(r.tax_amount, true)}</td>
 						<td class="num font-medium">{money(r.total_amount)}</td>

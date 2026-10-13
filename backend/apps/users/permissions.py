@@ -47,6 +47,12 @@ PERMISSION_MATRIX: dict[str, set[str]] = {
     "expenses.create": FINANCE,
     "expenses.cancel": MGMT,
     "expenses.manage_categories": MGMT,
+    # Cash & bank accounts
+    "cashbank.list": ALL,  # pick an account when taking payment on a sale
+    "cashbank.view": FINANCE,  # balances, cash/bank book, contra entries
+    "cashbank.manage": MGMT,  # add / edit accounts
+    "contra.create": FINANCE,
+    "contra.cancel": MGMT,
     # Inventory
     "inventory.view": ALL,
     "inventory.adjust": MGMT,

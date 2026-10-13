@@ -5,7 +5,8 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { debounce } from '$lib/utilities/debounce';
-	import { money, today, PAYMENT_METHODS } from '$lib/utilities/format';
+	import { money, today } from '$lib/utilities/format';
+	import AccountSelect from '$lib/components/cashbank/account-select.svelte';
 	import type { Expense, ExpenseCategory, Paginated } from '$lib/types';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import Card from '$lib/components/ui/card.svelte';
@@ -36,7 +37,7 @@
 	let vendorId = $state<number | null>(null);
 	let vendorLabel = $state('');
 	let payee = $state('');
-	let method = $state('CASH');
+	let account = $state<number | null>(null);
 	let reference = $state('');
 	let notes = $state('');
 	let totals = $state<Totals | null>(null);
@@ -74,7 +75,7 @@
 				tax_rate: taxRate || '0',
 				vendor: vendorId,
 				payee: vendorId ? '' : payee,
-				payment_method: method,
+				account,
 				reference_number: reference,
 				notes
 			});
@@ -109,7 +110,7 @@
 			<Field label="{auth.taxLabel} rate (%)" for="exp-tax" error={errors.tax_rate} hint="0 when the bill has no {auth.taxLabel}.">
 				<Input id="exp-tax" type="number" min="0" max="100" step="0.01" bind:value={taxRate} class="text-right" />
 			</Field>
-			<Field label="Payment method" for="exp-method"><Select id="exp-method" bind:value={method} options={PAYMENT_METHODS} /></Field>
+			<Field label="Paid from" for="exp-account" error={errors.account}><AccountSelect id="exp-account" bind:value={account} /></Field>
 			<Field label="Reference no." for="exp-ref" hint="Bill / cheque / transaction ref."><Input id="exp-ref" bind:value={reference} maxlength={60} /></Field>
 			<Field label="Vendor (optional)" for="exp-vendor" error={errors.vendor} class="sm:col-span-2">
 				<PartyPicker type="VENDOR" id="exp-vendor" bind:value={vendorId} bind:label={vendorLabel} />

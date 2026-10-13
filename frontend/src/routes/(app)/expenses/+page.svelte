@@ -3,7 +3,8 @@
 	import { api } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { ListState } from '$lib/stores/list.svelte';
-	import { money, date as fmtDate, PAYMENT_METHODS } from '$lib/utilities/format';
+	import { money, date as fmtDate } from '$lib/utilities/format';
+	import AccountSelect from '$lib/components/cashbank/account-select.svelte';
 	import type { Expense, ExpenseCategory, Paginated } from '$lib/types';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import Button from '$lib/components/ui/button.svelte';
@@ -25,7 +26,7 @@
 		categories = d.results.map((c) => ({ value: c.id, label: c.name }));
 	});
 	let category = $state('');
-	let method = $state('');
+	let account = $state('');
 	let status = $state('');
 	let start = $state('');
 	let end = $state('');
@@ -47,7 +48,7 @@
 	<div>
 		{#each list.items as e (e.id)}
 			<MCard href="/expenses/{e.id}" title={e.expense_number} subtitle="{e.category_name} · {e.description}"
-				meta="{fmtDate(e.date)} · {e.payment_method_display}{e.paid_to ? ` · ${e.paid_to}` : ''}" amount={money(e.total_amount)} muted={e.status === 'CANCELLED'}>
+				meta="{fmtDate(e.date)} · {e.account_name}{e.paid_to ? ` · ${e.paid_to}` : ''}" amount={money(e.total_amount)} muted={e.status === 'CANCELLED'}>
 				{#snippet badge()}{#if e.status === 'CANCELLED'}<StatusBadge status="CANCELLED" />{/if}{/snippet}
 			</MCard>
 		{/each}
@@ -58,14 +59,14 @@
 	<div class="flex flex-wrap items-end gap-2 border-b p-3">
 		<SearchInput placeholder="Number, description, paid to, reference…" onSearch={(v) => list.set('search', v)} />
 		<Select class="w-48" bind:value={category} onchange={() => list.set('category', category)} options={categories} placeholder="Any category" aria-label="Category" />
-		<Select class="w-40" bind:value={method} onchange={() => list.set('payment_method', method)} options={PAYMENT_METHODS} placeholder="Any method" aria-label="Payment method" />
+		<AccountSelect class="w-44" bind:value={account} onchange={() => list.set('account', account)} placeholder="Any account" aria-label="Paid from" />
 		<Select class="w-36" bind:value={status} onchange={() => list.set('status', status)} options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'CANCELLED', label: 'Cancelled' }]} placeholder="Any status" aria-label="Status" />
 		<label class="grid gap-1 text-xs text-muted-foreground">From<Input type="date" bind:value={start} class="h-9 w-40" onchange={() => list.set('start_date', start)} /></label>
 		<label class="grid gap-1 text-xs text-muted-foreground">To<Input type="date" bind:value={end} class="h-9 w-40" onchange={() => list.set('end_date', end)} /></label>
 	</div>
 	<div class="overflow-x-auto">
 		<table class="table-base" data-testid="expenses-table">
-			<thead><tr><th>Number</th><th>Date</th><th>Category</th><th>Description</th><th>Paid to</th><th>Method</th><th class="num">Amount</th><th class="num">Tax</th><th class="num">Total</th><th>Status</th></tr></thead>
+			<thead><tr><th>Number</th><th>Date</th><th>Category</th><th>Description</th><th>Paid to</th><th>Paid from</th><th class="num">Amount</th><th class="num">Tax</th><th class="num">Total</th><th>Status</th></tr></thead>
 			<tbody>
 				<TableState loading={list.loading} error={list.error} empty={!list.items.length} colspan={10} onRetry={() => list.load()} />
 				{#each list.items as e (e.id)}
@@ -75,7 +76,7 @@
 						<td>{e.category_name}</td>
 						<td>{e.description}</td>
 						<td class="text-muted-foreground">{e.paid_to}</td>
-						<td>{e.payment_method_display}</td>
+						<td>{e.account_name}</td>
 						<td class="num">{money(e.amount)}</td>
 						<td class="num">{money(e.tax_amount, true)}</td>
 						<td class="num font-medium">{money(e.total_amount)}</td>

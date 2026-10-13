@@ -31,10 +31,10 @@ PAYABLE = engine.AccountConfig(
 )
 
 
-def create_vendor_payment(*, vendor_id: int, date: dt.date, amount, payment_method: str, reference_number="",
-                          notes="", allocations=None, auto_allocate=False, user) -> VendorPayment:
+def create_vendor_payment(*, vendor_id: int, date: dt.date, amount, payment_method: str | None = None, account=None,
+                          reference_number="", notes="", allocations=None, auto_allocate=False, user) -> VendorPayment:
     return engine.create_payment(
-        PAYABLE, party_id=vendor_id, date=date, amount=amount, payment_method=payment_method,
+        PAYABLE, party_id=vendor_id, date=date, amount=amount, payment_method=payment_method, account=account,
         reference_number=reference_number, notes=notes, allocations=allocations, auto_allocate=auto_allocate, user=user,
     )
 

@@ -32,6 +32,7 @@
 	const askDateSystem = $derived(auth.settings?.date_system === '' && auth.can('settings.manage'));
 
 	const REPORTS = [
+		{ href: '/reports/day-book', label: 'Day Book', perm: 'reports.view' },
 		{ href: '/reports/sales', label: 'Sales', perm: 'reports.view' },
 		{ href: '/reports/purchases', label: 'Purchases', perm: 'reports.view' },
 		{ href: '/reports/expenses', label: 'Expenses', perm: 'reports.view' },

@@ -37,7 +37,8 @@ class ExpenseInputSerializer(serializers.Serializer):
     tax_rate = serializers.DecimalField(
         max_digits=7, decimal_places=2, min_value=ZERO, max_value=Decimal("100"), required=False, default=ZERO
     )
-    payment_method = serializers.ChoiceField(choices=PaymentMethod.choices, required=False, default=PaymentMethod.CASH)
+    payment_method = serializers.ChoiceField(choices=PaymentMethod.choices, required=False)
+    account = serializers.IntegerField(min_value=1, required=False, allow_null=True)
     reference_number = serializers.CharField(max_length=60, required=False, allow_blank=True, default="")
     notes = serializers.CharField(required=False, allow_blank=True, default="", max_length=2000)
 
@@ -60,13 +61,14 @@ class ExpenseListSerializer(serializers.ModelSerializer):
     vendor_name = serializers.CharField(source="vendor.name", read_only=True, default=None)
     paid_to = serializers.CharField(read_only=True)
     payment_method_display = serializers.CharField(source="get_payment_method_display", read_only=True)
+    account_name = serializers.CharField(source="account.name", read_only=True, default="")
 
     class Meta:
         model = Expense
         fields = [
             "id", "expense_number", "date", "category", "category_name", "vendor", "vendor_name", "payee", "paid_to",
             "description", "amount", "tax_rate", "tax_amount", "total_amount", "payment_method",
-            "payment_method_display", "reference_number", "status", "created_at",
+            "payment_method_display", "account", "account_name", "reference_number", "status", "created_at",
         ]
 
 

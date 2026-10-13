@@ -6,7 +6,8 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { debounce } from '$lib/utilities/debounce';
-	import { money, qty as fmtQty, today, addDays, PAYMENT_METHODS } from '$lib/utilities/format';
+	import { money, qty as fmtQty, today, addDays } from '$lib/utilities/format';
+	import AccountSelect from '$lib/components/cashbank/account-select.svelte';
 	import type { Paginated, Party, Product, Totals, TradeDoc } from '$lib/types';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import Card from '$lib/components/ui/card.svelte';
@@ -61,7 +62,7 @@
 	let notes = $state('');
 	let paymentStatus = $state<'UNPAID' | 'PAID' | 'PARTIAL'>('UNPAID');
 	let paidAmount = $state('');
-	let paymentMethod = $state('CASH');
+	let paymentAccount = $state<number | null>(null);
 	let paymentRef = $state('');
 
 	let totals = $state<Totals | null>(null);
@@ -158,8 +159,8 @@
 		};
 		if (dueDate) body.due_date = dueDate;
 		if (!isSale) body.vendor_bill_number = vendorBillNumber;
-		if (paymentStatus === 'PAID') body.payment = { pay_in_full: true, payment_method: paymentMethod, reference_number: paymentRef };
-		if (paymentStatus === 'PARTIAL') body.payment = { amount: paidAmount, payment_method: paymentMethod, reference_number: paymentRef };
+		if (paymentStatus === 'PAID') body.payment = { pay_in_full: true, account: paymentAccount, reference_number: paymentRef };
+		if (paymentStatus === 'PARTIAL') body.payment = { amount: paidAmount, account: paymentAccount, reference_number: paymentRef };
 		return body;
 	}
 
@@ -464,7 +465,7 @@
 							<Input id="pay-amount" type="number" min="0.01" step="0.01" bind:value={paidAmount} class="text-right" />
 						</Field>
 					{/if}
-					<Field label="Method" for="pay-method"><Select id="pay-method" bind:value={paymentMethod} options={PAYMENT_METHODS} /></Field>
+					<Field label={isSale ? 'Received in' : 'Paid from'} for="pay-account"><AccountSelect id="pay-account" bind:value={paymentAccount} /></Field>
 					<Field label="Reference" for="pay-ref"><Input id="pay-ref" bind:value={paymentRef} maxlength={60} placeholder="Cheque / txn no." /></Field>
 					<p class="text-xs text-muted-foreground">A {isSale ? 'receipt' : 'payment'} of {money(paidPreview)} will be recorded and allocated to this {isSale ? 'invoice' : 'bill'}.</p>
 				{/if}
