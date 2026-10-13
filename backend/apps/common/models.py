@@ -56,6 +56,7 @@ class DocumentSequence(models.Model):
     ADJUSTMENT = "stock_adjustment"
     EXPENSE = "expense"
     CONTRA = "contra"
+    JOURNAL = "journal"
 
     DEFAULTS = {
         SALE: "INV",
@@ -65,6 +66,7 @@ class DocumentSequence(models.Model):
         ADJUSTMENT: "ADJ",
         EXPENSE: "EXP",
         CONTRA: "CNTR",
+        JOURNAL: "JV",
     }
 
     def __str__(self):

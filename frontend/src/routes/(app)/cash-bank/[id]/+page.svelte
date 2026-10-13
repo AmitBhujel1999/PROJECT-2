@@ -44,7 +44,8 @@
 		Receipt: '/receipts',
 		Payment: '/payments',
 		Expense: '/expenses',
-		Contra: '/cash-bank/contra'
+		Contra: '/cash-bank/contra',
+		Journal: '/journal'
 	};
 </script>
 

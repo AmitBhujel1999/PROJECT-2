@@ -201,3 +201,42 @@ def expense_pdf(expense) -> bytes:
         story += [Spacer(1, 6), Paragraph(f"<b>Cancelled:</b> {_esc(expense.cancel_reason)}", SMALL)]
     story += [Spacer(1, 24), Paragraph(f"Printed {timezone.localtime():%d/%m/%Y %H:%M}<br/><br/>_______________________<br/>Authorised Signature", SMALL)]
     return build_pdf(story, title=f"{title} {expense.expense_number}")
+
+
+def journal_pdf(voucher) -> bytes:
+    from apps.journal.services import line_account
+
+    settings = BusinessSettings.get_solo()
+    bs = settings.date_system == "BS"
+    width = A4[0] - 24 * mm
+    title = "JOURNAL VOUCHER" + (" (CANCELLED)" if voucher.status == DocumentStatus.CANCELLED else "")
+    story = _header(settings, title, [("Number", voucher.voucher_number), ("Date", format_date(voucher.date, bs=bs))], width)
+
+    def head(text, style=CELL):
+        return Paragraph(f'<font color="white"><b>{text}</b></font>', style)
+
+    rows = [[head("Account"), head("Particulars"), head("Debit", CELL_R), head("Credit", CELL_R)]]
+    lines = voucher.lines.select_related("ledger", "money_account", "party", "expense_category")
+    for line in lines:
+        acc = line_account(line)
+        rows.append([
+            Paragraph(f"{_esc(acc['name'])}<br/><font size=6 color='grey'>{_esc(acc['group'])}</font>", CELL),
+            Paragraph(_esc(line.narration), CELL),
+            Paragraph(m(line.debit) if line.debit else "", CELL_R),
+            Paragraph(m(line.credit) if line.credit else "", CELL_R),
+        ])
+    total = f"<b>{m(voucher.total_amount)}</b>"
+    rows.append([Paragraph(f"<b>Total ({_esc(settings.currency_code)})</b>", CELL), Paragraph("", CELL),
+                 Paragraph(total, CELL_R), Paragraph(total, CELL_R)])
+    t = Table(rows, colWidths=[width * 0.35, width * 0.35, width * 0.15, width * 0.15])
+    t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), HEAD_BG), ("GRID", (0, 0), (-1, -1), 0.25, GRID)]))
+    story.append(t)
+    if voucher.narration:
+        story += [Spacer(1, 6), Paragraph(f"<b>Narration:</b> {_esc(voucher.narration)}", NORMAL)]
+    if voucher.status == DocumentStatus.CANCELLED:
+        story += [Spacer(1, 6), Paragraph(f"<b>Cancelled:</b> {_esc(voucher.cancel_reason)}", SMALL)]
+    story += [Spacer(1, 24), Paragraph(
+        f"Printed {timezone.localtime():%d/%m/%Y %H:%M}<br/><br/>_______________________ &nbsp;&nbsp;&nbsp; "
+        "_______________________<br/>Prepared by &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+        "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Approved by", SMALL)]
+    return build_pdf(story, title=f"{title} {voucher.voucher_number}")

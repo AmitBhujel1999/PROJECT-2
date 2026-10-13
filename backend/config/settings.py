@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     "apps.payables",
     "apps.expenses",
     "apps.cashbank",
+    "apps.journal",
     "apps.reports",
 ]
 

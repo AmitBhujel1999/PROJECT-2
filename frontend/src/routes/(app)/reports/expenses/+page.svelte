@@ -35,7 +35,9 @@
 		amount: string;
 		tax_amount: string;
 		total_amount: string;
-		by_category: { category_id: number; category_name: string; count: number; amount: string; tax_amount: string; total_amount: string }[];
+		by_category: { category_id: number; category_name: string; count: number; amount: string; tax_amount: string; total_amount: string; journal_amount: string; total_with_journal: string }[];
+		journal_amount: string;
+		total_with_journal: string;
 	}
 
 	const path = 'reports/expenses/';
@@ -53,7 +55,8 @@
 	let account = $state('');
 	let status = $state('ACTIVE');
 	const s = $derived(list.summary);
-	const share = (v: string) => (s && Number(s.total_amount) > 0 ? ((Number(v) / Number(s.total_amount)) * 100).toFixed(1) : '0.0');
+	const share = (v: string) => (s && Number(s.total_with_journal) > 0 ? ((Number(v) / Number(s.total_with_journal)) * 100).toFixed(1) : '0.0');
+	const hasJournal = $derived(!!s && Number(s.journal_amount) !== 0);
 </script>
 
 <svelte:head><title>Expense Report · Accounting</title></svelte:head>
@@ -78,11 +81,14 @@
 			<div class="rounded-xl border bg-card p-3 shadow-xs"><p class="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p><p class="mt-1 font-semibold tabular-nums">{value}</p></div>
 		{/each}
 	</div>
+	{#if hasJournal}
+		<p class="-mt-2 mb-4 text-sm text-muted-foreground">Plus <a class="text-primary hover:underline" href="/journal">journal entries</a> of {money(s.journal_amount)} (e.g. depreciation) = <span class="font-semibold text-foreground">{money(s.total_with_journal)}</span> in total.</p>
+	{/if}
 
 	<Card title="By category" class="mb-4" bodyClass="p-0">
 		<div class="overflow-x-auto">
 			<table class="table-base" data-testid="category-breakdown">
-				<thead><tr><th>Category</th><th class="num">Expenses</th><th class="num">Amount</th><th class="num">Tax</th><th class="num">Total</th><th class="w-1/4">Share</th></tr></thead>
+				<thead><tr><th>Category</th><th class="num">Expenses</th><th class="num">Amount</th><th class="num">Tax</th><th class="num">Total</th>{#if hasJournal}<th class="num">Journal</th>{/if}<th class="w-1/4">Share</th></tr></thead>
 				<tbody>
 					{#each s.by_category as c (c.category_id)}
 						<tr>
@@ -91,10 +97,11 @@
 							<td class="num">{money(c.amount)}</td>
 							<td class="num">{money(c.tax_amount, true)}</td>
 							<td class="num font-medium">{money(c.total_amount)}</td>
+							{#if hasJournal}<td class="num">{money(c.journal_amount, true)}</td>{/if}
 							<td>
 								<div class="flex items-center gap-2">
-									<div class="h-2 flex-1 rounded-full bg-muted"><div class="h-2 rounded-full bg-primary" style="width: {share(c.total_amount)}%"></div></div>
-									<span class="w-12 text-right text-xs tabular-nums text-muted-foreground">{share(c.total_amount)}%</span>
+									<div class="h-2 flex-1 rounded-full bg-muted"><div class="h-2 rounded-full bg-primary" style="width: {share(c.total_with_journal)}%"></div></div>
+									<span class="w-12 text-right text-xs tabular-nums text-muted-foreground">{share(c.total_with_journal)}%</span>
 								</div>
 							</td>
 						</tr>

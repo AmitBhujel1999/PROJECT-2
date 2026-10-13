@@ -21,6 +21,7 @@
 	const x = $derived(list.extra as { opening_balance?: string; closing_balance?: string; total_debit?: string; total_credit?: string });
 
 	function href(e: LedgerEntry) {
+		if (e.reference_type === 'journal') return `/journal/${e.reference_id}`;
 		return e.reference_type === 'document' ? `${side.docRoute}/${e.reference_id}` : `${side.payRoute}/${e.reference_id}`;
 	}
 	const path = $derived(`${side.api}/${partyId}/ledger/`);

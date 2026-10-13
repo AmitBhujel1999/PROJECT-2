@@ -302,9 +302,38 @@ class ExpenseReportView(APIView):
             "status": e.status,
         }
 
+    @staticmethod
+    def add_journal(request, summary: dict, start, end) -> None:
+        """Expense-category amounts posted by journal vouchers (e.g. depreciation)."""
+        from apps.expenses.models import ExpenseCategory
+        from apps.journal.services import expense_category_totals
+
+        params = request.query_params
+        filtered = any(params.get(k) for k in ("vendor", "account", "payment_method", "search"))
+        if filtered or params.get("status", DocumentStatus.ACTIVE) == DocumentStatus.CANCELLED:
+            journal = {}
+        else:
+            journal = {k: v for k, v in expense_category_totals(
+                start=start, end=end, category_id=parse_int_param(request, "category")
+            ).items() if v}
+        by_id = {c["category_id"]: c for c in summary["by_category"]}
+        names = dict(ExpenseCategory.objects.filter(pk__in=journal).values_list("pk", "name"))
+        for cid, amount in journal.items():
+            if cid not in by_id:
+                by_id[cid] = {"category_id": cid, "category_name": names.get(cid, ""), "count": 0, "amount": money(0),
+                              "tax_amount": money(0), "total_amount": money(0)}
+                summary["by_category"].append(by_id[cid])
+        for c in summary["by_category"]:
+            c["journal_amount"] = money(journal.get(c["category_id"], 0))
+            c["total_with_journal"] = money(c["total_amount"] + c["journal_amount"])
+        summary["by_category"].sort(key=lambda c: (-c["total_with_journal"], c["category_name"]))
+        summary["journal_amount"] = money(sum(journal.values(), 0))
+        summary["total_with_journal"] = money(summary["total_amount"] + summary["journal_amount"])
+
     def get(self, request):
         qs, start, end = self.queryset(request)
         summary = self.summary(qs)
+        self.add_journal(request, summary, start, end)
         qs = qs.order_by("-date", "-id")
         if request.query_params.get("export"):
             rows = [self.row(e) for e in qs[:EXPORT_LIMIT]]
@@ -322,7 +351,8 @@ class ExpenseReportView(APIView):
                     ("Amount", f"{summary['amount']:,.2f}"),
                     ("Tax", f"{summary['tax_amount']:,.2f}"),
                     ("Total", f"{summary['total_amount']:,.2f}"),
-                ] + [(c["category_name"], f"{c['total_amount']:,.2f}") for c in summary["by_category"][:4]],
+                ] + ([("Journal entries", f"{summary['journal_amount']:,.2f}")] if summary["journal_amount"] else [])
+                + [(c["category_name"], f"{c['total_with_journal']:,.2f}") for c in summary["by_category"][:4]],
             )
             if response:
                 return response

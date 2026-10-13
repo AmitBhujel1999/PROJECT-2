@@ -57,7 +57,8 @@ export const MENUS: TopMenu[] = [
 					{ label: 'Customers', href: '/customers', perm: 'parties.view' },
 					{ label: 'Vendors', href: '/vendors', perm: 'parties.view' },
 					{ label: 'Expense Categories', href: '/expenses/categories', perm: 'expenses.view' },
-					{ label: 'Cash & Bank Accounts', href: '/cash-bank', perm: 'cashbank.view' }
+					{ label: 'Cash & Bank Accounts', href: '/cash-bank', perm: 'cashbank.view' },
+					{ label: 'Chart of Accounts', href: '/journal/ledgers', perm: 'journal.view' }
 				]
 			},
 			{
@@ -115,6 +116,13 @@ export const MENUS: TopMenu[] = [
 				]
 			},
 			{
+				label: 'Journal Voucher',
+				children: [
+					{ label: 'Add Journal Voucher', href: '/journal/new', perm: 'journal.create' },
+					{ label: 'List of Journal Vouchers', href: '/journal', perm: 'journal.view' }
+				]
+			},
+			{
 				label: 'Contra (Cash ↔ Bank)',
 				children: [
 					{ label: 'Add Contra', href: '/cash-bank/contra/new', perm: 'contra.create' },
@@ -143,6 +151,13 @@ export const MENUS: TopMenu[] = [
 				children: [
 					{ label: 'Cash & Bank Accounts', href: '/cash-bank', perm: 'cashbank.view' },
 					{ label: 'Day Book', href: '/reports/day-book', perm: 'reports.view' }
+				]
+			},
+			{
+				label: 'Journal',
+				children: [
+					{ label: 'Chart of Accounts', href: '/journal/ledgers', perm: 'journal.view' },
+					{ label: 'List of Journal Vouchers', href: '/journal', perm: 'journal.view' }
 				]
 			},
 			{

@@ -88,7 +88,7 @@
 			{/each}
 		</div>
 		{#if type === 'CUSTOMER'}
-			<p class="mb-4 text-xs text-muted-foreground">Last transaction: {fmtDate(s.last_transaction_date) || '—'} · Net balance: {money(s.net_balance)}{#if s.available_credit !== null} · Available credit: {money(s.available_credit)}{/if}</p>
+			<p class="mb-4 text-xs text-muted-foreground">Last transaction: {fmtDate(s.last_transaction_date) || '—'} · Net balance: {money(s.net_balance)}{#if Number(s.journal)} (incl. journal adjustments {money(s.journal)}){/if}{#if s.available_credit !== null} · Available credit: {money(s.available_credit)}{/if}</p>
 		{/if}
 	{/if}
 

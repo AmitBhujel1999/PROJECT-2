@@ -196,7 +196,7 @@ export interface LedgerEntry {
 	date: string;
 	reference: string;
 	reference_id: number;
-	reference_type: 'document' | 'payment';
+	reference_type: 'document' | 'payment' | 'journal';
 	transaction_type: string;
 	description: string;
 	debit: Money;
@@ -356,7 +356,7 @@ export interface MoneyAccount {
 
 export interface AccountBookEntry {
 	date: string;
-	voucher_type: 'Receipt' | 'Payment' | 'Expense' | 'Contra';
+	voucher_type: 'Receipt' | 'Payment' | 'Expense' | 'Contra' | 'Journal';
 	number: string;
 	object_id: number;
 	particulars: string;
@@ -415,4 +415,71 @@ export interface DayBook {
 	count: number;
 	totals: { voucher_type: string; amount: string }[];
 	entries: DayBookEntry[];
+}
+
+export type DrCr = { amount: string; side: 'Dr' | 'Cr' };
+
+/** Chart-of-accounts ledger. */
+export interface LedgerAccount {
+	id: number;
+	name: string;
+	group: string;
+	group_display: string;
+	nature: 'ASSET' | 'LIABILITY' | 'INCOME' | 'EXPENSE';
+	opening_balance: string;
+	opening_side: 'DR' | 'CR';
+	notes: string;
+	is_active: boolean;
+	balance: DrCr | null;
+}
+
+export interface AccountGroupOption {
+	value: string;
+	label: string;
+	nature: LedgerAccount['nature'];
+}
+
+/** Anything a journal line can post to: "ledger:5", "cash:2", "party:9", "expense:3". */
+export interface JournalAccountOption {
+	key: string;
+	name: string;
+	group: string;
+}
+
+export interface JournalVoucher {
+	id: number;
+	voucher_number: string;
+	date: string;
+	narration: string;
+	total_amount: string;
+	status: DocStatus;
+	cancelled_at: string | null;
+	cancel_reason: string;
+	created_at: string;
+	created_by_name: string | null;
+	cancelled_by_name: string | null;
+	lines: { line_no: number; account: JournalAccountOption; debit: string; credit: string; narration: string }[];
+}
+
+export interface JournalVoucherRow {
+	id: number;
+	voucher_number: string;
+	date: string;
+	narration: string;
+	total_amount: string;
+	status: DocStatus;
+	accounts: { debit: string[]; credit: string[] };
+}
+
+export interface LedgerBook {
+	ledger: number;
+	ledger_name: string;
+	group_display: string;
+	opening: DrCr;
+	total_debit: string;
+	total_credit: string;
+	closing: DrCr;
+	start_date: string | null;
+	end_date: string;
+	entries: { date: string; voucher_id: number; number: string; narration: string; debit: string; credit: string; balance: DrCr }[];
 }

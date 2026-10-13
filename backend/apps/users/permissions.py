@@ -53,6 +53,11 @@ PERMISSION_MATRIX: dict[str, set[str]] = {
     "cashbank.manage": MGMT,  # add / edit accounts
     "contra.create": FINANCE,
     "contra.cancel": MGMT,
+    # Journal vouchers and chart of accounts
+    "journal.view": FINANCE,
+    "journal.create": FINANCE,
+    "journal.cancel": MGMT,
+    "journal.manage_ledgers": MGMT,
     # Inventory
     "inventory.view": ALL,
     "inventory.adjust": MGMT,

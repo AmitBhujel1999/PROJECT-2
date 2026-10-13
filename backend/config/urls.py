@@ -23,6 +23,7 @@ api_patterns = [
     path("", include("apps.payables.urls")),
     path("", include("apps.expenses.urls")),
     path("", include("apps.cashbank.urls")),
+    path("", include("apps.journal.urls")),
     path("", include("apps.parties.urls")),
     path("", include("apps.inventory.urls")),
     path("", include("apps.purchases.urls")),

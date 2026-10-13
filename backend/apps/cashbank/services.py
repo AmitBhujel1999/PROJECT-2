@@ -73,6 +73,7 @@ def _used(account: MoneyAccount) -> bool:
         or Expense.objects.filter(account=account).exists()
         or Contra.objects.filter(from_account=account).exists()
         or Contra.objects.filter(to_account=account).exists()
+        or account.journal_lines.exists()
     )
 
 
@@ -141,7 +142,20 @@ def balance(account: MoneyAccount, as_of: dt.date | None = None) -> Decimal:
         if as_of:
             qs = qs.filter(date__lte=as_of)
         total += sign * (qs.aggregate(t=Sum(amount_field))["t"] or ZERO)
+    lines = _journal_lines(account.pk)
+    if as_of:
+        lines = lines.filter(voucher__date__lte=as_of)
+    j = lines.aggregate(dr=Sum("debit"), cr=Sum("credit"))
+    total += (j["dr"] or ZERO) - (j["cr"] or ZERO)
     return money(total)
+
+
+def _journal_lines(account_id: int | None = None):
+    """Journal voucher lines posted to a cash/bank account (debit = money in)."""
+    from apps.journal.services import active_lines
+
+    lines = active_lines().filter(money_account__isnull=False)
+    return lines.filter(money_account_id=account_id) if account_id else lines
 
 
 def balances() -> dict[int, Decimal]:
@@ -151,6 +165,8 @@ def balances() -> dict[int, Decimal]:
         field = "account_id" if qs.model.__name__ != "Contra" else ("to_account_id" if sign > 0 else "from_account_id")
         for row in qs.values(field).annotate(t=Sum(amount_field)):
             result[row[field]] = result.get(row[field], ZERO) + sign * row["t"]
+    for row in _journal_lines().values("money_account_id").annotate(dr=Sum("debit"), cr=Sum("credit")).order_by():
+        result[row["money_account_id"]] = result.get(row["money_account_id"], ZERO) + row["dr"] - row["cr"]
     return {k: money(v) for k, v in result.items()}
 
 
@@ -198,6 +214,23 @@ def account_book(account: MoneyAccount, *, start: dt.date | None = None, end: dt
                     "_order": obj.created_at.timestamp(),
                 }
             )
+    lines = _journal_lines(account.pk).filter(voucher__date__lte=end).select_related("voucher")
+    if start:
+        lines = lines.filter(voucher__date__gte=start)
+    for line in lines:
+        entries.append(
+            {
+                "date": line.voucher.date,
+                "voucher_type": "Journal",
+                "number": line.voucher.voucher_number,
+                "object_id": line.voucher_id,
+                "particulars": line.narration or line.voucher.narration or "Journal voucher",
+                "reference_number": "",
+                "money_in": money(line.debit),
+                "money_out": money(line.credit),
+                "_order": line.voucher.created_at.timestamp() + line.line_no / 1000,
+            }
+        )
     entries.sort(key=lambda e: (e["date"], e["_order"]))
     running = opening
     total_in = total_out = NIL
@@ -274,6 +307,7 @@ def cancel_contra(contra: Contra, *, reason: str, user) -> Contra:
 def day_book(*, start: dt.date, end: dt.date, include_cancelled=False) -> dict:
     """Every voucher dated between ``start`` and ``end``, in date order."""
     from apps.expenses.models import Expense
+    from apps.journal.models import JournalVoucher
     from apps.payables.models import VendorPayment
     from apps.purchases.models import Purchase
     from apps.receivables.models import CustomerReceipt
@@ -309,6 +343,8 @@ def day_book(*, start: dt.date, end: dt.date, include_cancelled=False) -> dict:
         *rows(Contra.objects.select_related("from_account", "to_account"), "Contra", "contra_number", None, "amount",
               account=lambda o: f"{o.from_account.name} → {o.to_account.name}",
               particulars=lambda o: o.notes or "Transfer between accounts", link="cash-bank/contra"),
+        *rows(JournalVoucher.objects.all(), "Journal", "voucher_number", None, "total_amount",
+              particulars=lambda o: o.narration or "Journal voucher", link="journal"),
     ]
     entries.sort(key=lambda e: (e["date"], e["_order"]))
     totals: dict[str, Decimal] = {}

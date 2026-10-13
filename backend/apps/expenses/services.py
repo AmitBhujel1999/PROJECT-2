@@ -95,7 +95,7 @@ def set_category_active(category: ExpenseCategory, *, active: bool, user) -> Exp
 @transaction.atomic
 def delete_category(category: ExpenseCategory, *, user) -> None:
     """Physically delete only categories that were never used."""
-    if category.expenses.exists():
+    if category.expenses.exists() or category.journal_lines.exists():
         raise BusinessError(
             "This category has expenses and cannot be deleted. Deactivate it instead.",
             code="CATEGORY_HAS_EXPENSES",
