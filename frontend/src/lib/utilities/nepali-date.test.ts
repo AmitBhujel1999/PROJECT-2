@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { adToBs, bsToAd, parseBs, daysInBsMonth, BS_MAX_YEAR } from './nepali-date';
+import { adToBs, bsToAd, parseBs, parseBsInput, autoSlash, daysInBsMonth, BS_MAX_YEAR } from './nepali-date';
 import { date, dateTime, firstOfMonth, shortDate } from './format';
 import { calendar } from '$lib/stores/calendar.svelte';
 import { nepaliFiscalYear } from '$lib/components/layout/menu';
@@ -37,6 +37,28 @@ describe('nepali-date', () => {
 		expect(parseBs('2083/06/32')).toBeNull();
 		expect(parseBs('27/06/2083')).toBeNull();
 		expect(daysInBsMonth(2083, 6)).toBe(31);
+	});
+
+	it('accepts short typed forms', () => {
+		const ref = { year: 2083, month: 6, day: 27 };
+		const d = (year: number, month: number, day: number) => ({ year, month, day });
+		expect(parseBsInput('2083/07/15', ref)).toEqual(d(2083, 7, 15));
+		expect(parseBsInput('20830715', ref)).toEqual(d(2083, 7, 15));
+		expect(parseBsInput('82/12/30', ref)).toEqual(d(2082, 12, 30));
+		expect(parseBsInput('7/15', ref)).toEqual(d(2083, 7, 15));
+		expect(parseBsInput('15', ref)).toEqual(d(2083, 6, 15));
+		expect(parseBsInput('40', ref)).toBeNull();
+		expect(parseBsInput('abc', ref)).toBeNull();
+		expect(parseBsInput('1/2/3/4', ref)).toBeNull();
+	});
+
+	it('adds slashes while typing digits', () => {
+		expect(autoSlash('2083')).toBe('2083');
+		expect(autoSlash('20830')).toBe('2083/0');
+		expect(autoSlash('2083/062')).toBe('2083/06/2');
+		expect(autoSlash('20830627')).toBe('2083/06/27');
+		expect(autoSlash('6/27')).toBe('6/27');
+		expect(autoSlash('83/6/27')).toBe('83/6/27');
 	});
 });
 

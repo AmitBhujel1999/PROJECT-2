@@ -65,6 +65,35 @@ export function bsIso(bs: BsDate): string {
 	return `${bs.year}-${pad(bs.month)}-${pad(bs.day)}`;
 }
 
+/**
+ * Lenient parse for typed dates; missing parts come from `ref` (usually today):
+ * "2083/06/27", "20830627", "83/6/27" (2083), "6/27" (this year), "27" (this month).
+ */
+export function parseBsInput(text: string, ref: BsDate): BsDate | null {
+	const t = text.trim();
+	const parts = /^\d{8}$/.test(t) ? [t.slice(0, 4), t.slice(4, 6), t.slice(6)] : t.split(/[-/.\s]+/);
+	if (!parts.every((p) => /^\d{1,4}$/.test(p))) return null;
+	const n = parts.map(Number);
+	let bs: BsDate;
+	if (parts.length === 1) bs = { year: ref.year, month: ref.month, day: n[0] };
+	else if (parts.length === 2) bs = { year: ref.year, month: n[0], day: n[1] };
+	else if (parts.length === 3) bs = { year: parts[0].length <= 2 ? 2000 + n[0] : n[0], month: n[1], day: n[2] };
+	else return null;
+	try {
+		bsToAd(bs);
+		return bs;
+	} catch {
+		return null;
+	}
+}
+
+/** While typing digits only, add the slashes: "2083062" -> "2083/06/2". */
+export function autoSlash(text: string): string {
+	const digits = text.replace(/\//g, '');
+	if (!/^\d{5,8}$/.test(digits) || !/^\d{4}\/?\d{0,2}\/?\d{0,2}$/.test(text)) return text;
+	return [digits.slice(0, 4), digits.slice(4, 6), digits.slice(6)].filter(Boolean).join('/');
+}
+
 /** Parse "2083-06-27", "2083/6/27" or "2083.06.27"; null when not a valid B.S. date. */
 export function parseBs(text: string): BsDate | null {
 	const m = text.trim().match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);

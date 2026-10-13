@@ -3,12 +3,13 @@
 	import { CalendarDays, ChevronLeft, ChevronRight } from '@lucide/svelte';
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import { cn } from '$lib/utils';
-	import { today } from '$lib/utilities/format';
+	import { addDays, today } from '$lib/utilities/format';
 	import {
 		adToBs,
 		bsToAd,
 		daysInBsMonth,
-		parseBs,
+		autoSlash,
+		parseBsInput,
 		BS_MAX_YEAR,
 		BS_MIN_YEAR,
 		BS_MONTHS,
@@ -81,7 +82,7 @@
 			commit('', event);
 			return;
 		}
-		const bs = parseBs(text);
+		const bs = parseBsInput(text, toBs(today())!);
 		if (!bs || outOfRange(bsToAd(bs))) {
 			invalid = true;
 			return;
@@ -136,10 +137,19 @@
 		aria-invalid={invalid || undefined}
 		{disabled}
 		onchange={onTextChange}
+		oninput={(e) => {
+			const el = e.currentTarget;
+			if ((e as unknown as InputEvent).inputType === 'insertText' && el.selectionStart === el.value.length) text = autoSlash(text);
+		}}
 		onkeydown={(e) => {
 			if (e.key === 'ArrowDown' && e.altKey) {
 				e.preventDefault();
 				open = true;
+			} else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.altKey) {
+				e.preventDefault();
+				const base = typeof value === 'string' && value ? value : today();
+				const next = addDays(base, e.key === 'ArrowUp' ? 1 : -1);
+				if (toBs(next) && !outOfRange(next)) commit(next, e);
 			}
 		}}
 		class="flex h-full min-h-8 w-full min-w-0 rounded-md border border-input bg-background py-1 pl-3 pr-9 text-sm tabular-nums shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/30"
