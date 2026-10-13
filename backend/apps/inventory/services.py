@@ -172,10 +172,50 @@ def post_opening_stock(product: Product, *, user=None, date: dt.date | None = No
         reference_type="product",
         reference_id=product.pk,
         reference_number=product.sku_code,
-        unit_cost=product.purchase_price,
+        unit_cost=product.opening_rate,
         notes="Opening stock",
         user=user,
     )
+
+
+def change_opening_stock(product: Product, *, quantity: Decimal, user) -> StockMovement | None:
+    """Change a product's opening quantity after it was created.
+
+    The stock ledger is append-only, so the difference is posted as another
+    opening-stock movement on the opening date. Lowering the opening is refused
+    when stock would go below zero on that date or any later date.
+    """
+    lock_products([product.pk])
+    old, new = qty(product.opening_stock), qty(quantity)
+    delta = qty(new - old)
+    if not delta:
+        return None
+    movements = StockMovement.objects.filter(product=product)
+    opened = movements.filter(transaction_type=MovementType.OPENING_STOCK).order_by("id").values_list("date", flat=True).first()
+    first = movements.order_by("date", "id").values_list("date", flat=True).first()
+    created = timezone.localtime(product.created_at).date()
+    date = opened or min(d for d in (first, created) if d)
+    try:
+        return post_movement(
+            product,
+            date=date,
+            transaction_type=MovementType.OPENING_STOCK,
+            quantity_in=max(delta, ZERO),
+            quantity_out=max(-delta, ZERO),
+            reference_type="product",
+            reference_id=product.pk,
+            reference_number=product.sku_code,
+            unit_cost=product.opening_rate,
+            notes=f"Opening stock changed from {old.normalize():f} to {new.normalize():f}",
+            user=user,
+        )
+    except InsufficientStockError as err:
+        raise BusinessError(
+            f"Opening stock of {product.name} cannot be lowered to {new.normalize():f}: stock already sold or "
+            f"adjusted needs at least {qty(old - Decimal(err.details['available'])).normalize():f}.",
+            code="OPENING_TOO_LOW",
+            details=err.details,
+        ) from err
 
 
 def check_availability(requirements: dict[int, Decimal], products: dict[int, Product], on: dt.date) -> None:

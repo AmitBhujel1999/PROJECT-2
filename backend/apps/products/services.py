@@ -9,6 +9,9 @@ from .models import Product
 
 @transaction.atomic
 def create_product(*, data: dict, user, opening_date=None) -> Product:
+    data = dict(data)
+    if data.get("opening_rate") is None:
+        data["opening_rate"] = data.get("purchase_price") or 0
     product = Product.objects.create(**data)
     _post_opening_stock(product, user, opening_date)
     record(AuditAction.CREATE, product, after=snapshot(product), user=user)
@@ -28,9 +31,14 @@ def _post_opening_stock(product: Product, user, opening_date=None) -> None:
 def update_product(product: Product, *, data: dict, user) -> Product:
     product = Product.objects.select_for_update().get(pk=product.pk)
     before = snapshot(product)
-    data.pop("opening_stock", None)
+    opening = data.pop("opening_stock", None)
     for key, value in data.items():
         setattr(product, key, value)
+    if opening is not None and opening != product.opening_stock:
+        from apps.inventory.services import change_opening_stock
+
+        change_opening_stock(product, quantity=opening, user=user)
+        product.opening_stock = opening
     product.save()
     record(AuditAction.UPDATE, product, before=before, after=snapshot(product), user=user)
     return product

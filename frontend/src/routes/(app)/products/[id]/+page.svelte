@@ -55,7 +55,7 @@
 		<Card title="Stock">
 			<dl class="grid grid-cols-2 gap-y-2 text-sm">
 				<dt class="text-muted-foreground">Current stock</dt><dd class="num font-semibold" data-testid="product-current-stock">{qty(p.current_stock)} {p.unit_display}</dd>
-				<dt class="text-muted-foreground">Opening stock</dt><dd class="num">{qty(p.opening_stock)}</dd>
+				<dt class="text-muted-foreground">Opening stock</dt><dd class="num">{qty(p.opening_stock)} × {money(p.opening_rate)} = {money(p.opening_amount)}</dd>
 				<dt class="text-muted-foreground">Reorder level</dt><dd class="num">{qty(p.reorder_level)}</dd>
 			</dl>
 		</Card>

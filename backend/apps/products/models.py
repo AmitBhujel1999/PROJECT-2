@@ -33,6 +33,7 @@ class Product(TimeStampedModel):
     unit = models.CharField(max_length=10, choices=Unit.choices, default=Unit.PCS)
     description = models.TextField(blank=True, default="")
     opening_stock = models.DecimalField(**QTY_FIELD, default=Decimal("0"))
+    opening_rate = models.DecimalField(**MONEY_FIELD, default=Decimal("0"), help_text="Cost per unit of the opening stock.")
     reorder_level = models.DecimalField(**QTY_FIELD, default=Decimal("0"))
     purchase_price = models.DecimalField(**MONEY_FIELD, default=Decimal("0"))
     selling_price = models.DecimalField(**MONEY_FIELD, default=Decimal("0"))
@@ -43,6 +44,7 @@ class Product(TimeStampedModel):
         ordering = ["name"]
         constraints = [
             models.CheckConstraint(condition=Q(opening_stock__gte=0), name="product_opening_stock_gte_0"),
+            models.CheckConstraint(condition=Q(opening_rate__gte=0), name="product_opening_rate_gte_0"),
             models.CheckConstraint(condition=Q(reorder_level__gte=0), name="product_reorder_level_gte_0"),
             models.CheckConstraint(condition=Q(purchase_price__gte=0), name="product_purchase_price_gte_0"),
             models.CheckConstraint(condition=Q(selling_price__gte=0), name="product_selling_price_gte_0"),
@@ -51,6 +53,10 @@ class Product(TimeStampedModel):
 
     def __str__(self):
         return f"{self.name} ({self.sku_code})"
+
+    @property
+    def opening_amount(self) -> Decimal:
+        return (self.opening_stock * self.opening_rate).quantize(Decimal("0.01"))
 
     def save(self, *args, **kwargs):
         self.sku_code = (self.sku_code or "").strip().upper()

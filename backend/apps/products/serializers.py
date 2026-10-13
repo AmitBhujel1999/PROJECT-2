@@ -12,6 +12,8 @@ class ProductSerializer(serializers.ModelSerializer):
         validators=[UniqueValidator(queryset=Product.objects.all(), message="A product with this SKU already exists.", lookup="iexact")],
     )
     opening_stock = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0"), required=False)
+    opening_rate = serializers.DecimalField(max_digits=16, decimal_places=2, min_value=Decimal("0"), required=False)
+    opening_amount = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
     reorder_level = serializers.DecimalField(max_digits=14, decimal_places=3, min_value=Decimal("0"), required=False)
     purchase_price = serializers.DecimalField(max_digits=16, decimal_places=2, min_value=Decimal("0"), required=False)
     selling_price = serializers.DecimalField(max_digits=16, decimal_places=2, min_value=Decimal("0"), required=False)
@@ -22,7 +24,7 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            "id", "name", "sku_code", "unit", "unit_display", "description", "opening_stock", "reorder_level",
+            "id", "name", "sku_code", "unit", "unit_display", "description", "opening_stock", "opening_rate", "opening_amount", "reorder_level",
             "purchase_price", "selling_price", "tax_rate", "is_active", "current_stock", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "is_active", "created_at", "updated_at"]
@@ -37,13 +39,6 @@ class ProductSerializer(serializers.ModelSerializer):
         value = value.strip()
         if not value:
             raise serializers.ValidationError("Name is required.")
-        return value
-
-    def validate_opening_stock(self, value):
-        # Opening stock is posted to the immutable stock ledger on creation;
-        # later corrections must go through a stock adjustment.
-        if self.instance is not None and value != self.instance.opening_stock:
-            raise serializers.ValidationError("Opening stock cannot be changed after creation. Use a stock adjustment.")
         return value
 
     def to_representation(self, instance):

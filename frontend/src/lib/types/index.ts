@@ -42,6 +42,8 @@ export interface Product {
 	unit_display: string;
 	description: string;
 	opening_stock: Qty;
+	opening_rate: Money;
+	opening_amount: Money;
 	reorder_level: Qty;
 	purchase_price: Money;
 	selling_price: Money;

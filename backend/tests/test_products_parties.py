@@ -44,16 +44,49 @@ def test_duplicate_sku_rejected_case_insensitive(api):
     assert "sku_code" in r.json()["error"]["details"]
 
 
-def test_edit_product_and_opening_stock_is_immutable(api):
+def test_edit_product_is_audited(api):
     pid = api.post("/api/products/", PRODUCT, format="json").json()["data"]["id"]
     r = api.patch(f"/api/products/{pid}/", {"selling_price": "70000", "name": "Laptop Pro"}, format="json")
     assert r.status_code == 200
     assert r.json()["data"]["selling_price"] == "70000.00"
-    r = api.patch(f"/api/products/{pid}/", {"opening_stock": "50"}, format="json")
-    assert r.status_code == 400
     audit = AuditLog.objects.filter(model_name="products.Product", action="UPDATE").first()
     assert audit.before_data["selling_price"] == "65000.00"
     assert audit.after_data["selling_price"] == "70000.00"
+
+
+def test_opening_stock_has_rate_and_amount(api):
+    d = api.post("/api/products/", PRODUCT, format="json").json()["data"]
+    # Rate defaults to the purchase price.
+    assert (d["opening_rate"], d["opening_amount"]) == ("50000.00", "1000000.00")
+    d = api.post("/api/products/", {**PRODUCT, "sku_code": "LAP-2", "opening_rate": "48000"}, format="json").json()["data"]
+    assert d["opening_amount"] == "960000.00"
+    r = api.patch(f"/api/products/{d['id']}/", {"opening_rate": "49000"}, format="json")
+    assert r.json()["data"]["opening_amount"] == "980000.00"
+
+
+def test_opening_stock_can_be_changed_but_not_below_what_was_sold(api, customer):
+    pid = api.post("/api/products/", PRODUCT, format="json").json()["data"]["id"]
+    r = api.patch(f"/api/products/{pid}/", {"opening_stock": "25"}, format="json")
+    assert r.status_code == 200, r.content
+    assert r.json()["data"]["opening_stock"] == "25.000"
+    assert api.get(f"/api/products/{pid}/").json()["data"]["current_stock"] == "25.000"
+    moves = StockMovement.objects.filter(product_id=pid, transaction_type=MovementType.OPENING_STOCK).order_by("id")
+    assert [(m.quantity_in, m.quantity_out) for m in moves] == [(D("20"), D("0")), (D("5"), D("0"))]
+    assert moves[1].date == moves[0].date
+
+    sale = {"party": customer.pk, "date": moves[0].date.isoformat(), "items": [{"product": pid, "quantity": "22", "discount_type": None, "discount_value": "0"}]}
+    assert api.post("/api/sales/", sale, format="json").status_code == 201
+    r = api.patch(f"/api/products/{pid}/", {"opening_stock": "21"}, format="json")
+    assert r.status_code == 400 and r.json()["error"]["code"] == "OPENING_TOO_LOW"
+    assert "at least 22" in r.json()["error"]["message"]
+    assert api.patch(f"/api/products/{pid}/", {"opening_stock": "22"}, format="json").status_code == 200
+    assert api.get(f"/api/products/{pid}/").json()["data"]["current_stock"] == "0.000"
+
+
+def test_opening_stock_added_later(api):
+    pid = api.post("/api/products/", {**PRODUCT, "opening_stock": "0"}, format="json").json()["data"]["id"]
+    assert api.patch(f"/api/products/{pid}/", {"opening_stock": "4"}, format="json").status_code == 200
+    assert api.get(f"/api/products/{pid}/").json()["data"]["current_stock"] == "4.000"
 
 
 def test_negative_price_rejected(api):
