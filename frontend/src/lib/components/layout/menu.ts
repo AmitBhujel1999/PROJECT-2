@@ -3,6 +3,9 @@
  * pages (leaves). Permissions only hide entries; the API enforces them.
  */
 
+import { adToBs } from '$lib/utilities/nepali-date';
+import { toIso } from '$lib/utilities/format';
+
 export interface MenuLeaf {
 	label: string;
 	href?: string;
@@ -183,14 +186,9 @@ export function filterMenu(nodes: MenuNode[], can: (perm: string) => boolean): M
 	return out;
 }
 
-/**
- * Nepali fiscal year (Shrawan 1 – Ashadh end) shown in the status line.
- * Shrawan 1 falls on 16/17 July; 17 July is used as the cut-over, so the
- * label can be one day early in some years.
- */
+/** Nepali fiscal year (Shrawan 1 – Asar end) shown in the status line, e.g. "2083-84". */
 export function nepaliFiscalYear(d = new Date()): string {
-	const y = d.getFullYear();
-	const started = d.getMonth() > 6 || (d.getMonth() === 6 && d.getDate() >= 17);
-	const start = started ? y + 57 : y + 56;
+	const bs = adToBs(toIso(d));
+	const start = bs.month >= 4 ? bs.year : bs.year - 1;
 	return `${start}-${String((start + 1) % 100).padStart(2, '0')}`;
 }

@@ -9,10 +9,15 @@
 	import Input from '$lib/components/ui/input.svelte';
 	import Textarea from '$lib/components/ui/textarea.svelte';
 	import Button from '$lib/components/ui/button.svelte';
+	import Select from '$lib/components/ui/select.svelte';
 
 	let form = $state<BusinessSettings | null>(null);
 	let errors = $state<Record<string, string>>({});
 	let busy = $state(false);
+	const DATE_SYSTEMS = [
+		{ value: 'BS', label: 'Nepali date (B.S.)' },
+		{ value: 'AD', label: 'English date (A.D.)' }
+	];
 	const readOnly = $derived(!auth.can('settings.manage'));
 
 	api.get<BusinessSettings>('settings/').then((s) => (form = s));
@@ -51,6 +56,9 @@
 				<Field label="Currency symbol" for="s-sym"><Input id="s-sym" bind:value={form.currency_symbol} maxlength={8} /></Field>
 				<Field label="Tax label" for="s-taxl"><Input id="s-taxl" bind:value={form.tax_label} maxlength={20} /></Field>
 				<Field label="Default tax rate (%)" for="s-tax" error={errors.default_tax_rate}><Input id="s-tax" type="number" step="0.01" min="0" max="100" bind:value={form.default_tax_rate} /></Field>
+				<Field label="Date system" for="s-dates" hint="Calendar for dates on screens, prints and exports. Data is stored the same either way." class="sm:col-span-2">
+					<Select id="s-dates" bind:value={form.date_system} options={DATE_SYSTEMS} placeholder="Not chosen (English A.D.)" />
+				</Field>
 				<Field label="Invoice footer" for="s-footer" class="sm:col-span-2"><Input id="s-footer" bind:value={form.invoice_footer} maxlength={300} /></Field>
 			</fieldset>
 			{#if !readOnly}<div class="mt-4 flex justify-end"><Button type="submit" loading={busy}>Save settings</Button></div>{/if}

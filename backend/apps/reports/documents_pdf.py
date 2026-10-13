@@ -11,6 +11,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
 
 from apps.common.models import BusinessSettings, DocumentStatus
+from apps.common.nepali_date import format_date
 
 from .exporters import CELL, CELL_R, GRID, H1, HEAD_BG, NORMAL, RIGHT, SMALL, _esc, build_pdf
 
@@ -56,6 +57,7 @@ def _header(settings: BusinessSettings, doc_title: str, meta_rows: list[tuple[st
 def trade_document_pdf(doc, *, kind: str) -> bytes:
     """``kind`` is 'sale' or 'purchase'."""
     settings = BusinessSettings.get_solo()
+    bs = settings.date_system == "BS"
     width = A4[0] - 24 * mm
     is_sale = kind == "sale"
     number = doc.invoice_number if is_sale else doc.bill_number
@@ -63,8 +65,8 @@ def trade_document_pdf(doc, *, kind: str) -> bytes:
     title = ("TAX INVOICE" if is_sale else "PURCHASE BILL") + (" (CANCELLED)" if doc.status == DocumentStatus.CANCELLED else "")
     meta = [
         ("Invoice No." if is_sale else "Bill No.", number),
-        ("Date", doc.date.strftime("%d/%m/%Y")),
-        ("Due Date", doc.due_date.strftime("%d/%m/%Y")),
+        ("Date", format_date(doc.date, bs=bs)),
+        ("Due Date", format_date(doc.due_date, bs=bs)),
         ("Payment Status", doc.get_payment_status_display()),
     ]
     if not is_sale and doc.vendor_bill_number:
@@ -136,12 +138,13 @@ def trade_document_pdf(doc, *, kind: str) -> bytes:
 def payment_pdf(payment, *, kind: str) -> bytes:
     """``kind`` is 'receipt' or 'payment'."""
     settings = BusinessSettings.get_solo()
+    bs = settings.date_system == "BS"
     width = A4[0] - 24 * mm
     is_receipt = kind == "receipt"
     number = payment.receipt_number if is_receipt else payment.payment_number
     party = payment.customer if is_receipt else payment.vendor
     title = ("RECEIPT" if is_receipt else "PAYMENT VOUCHER") + (" (CANCELLED)" if payment.status == DocumentStatus.CANCELLED else "")
-    meta = [("Number", number), ("Date", payment.date.strftime("%d/%m/%Y")), ("Method", payment.get_payment_method_display())]
+    meta = [("Number", number), ("Date", format_date(payment.date, bs=bs)), ("Method", payment.get_payment_method_display())]
     if payment.reference_number:
         meta.append(("Reference", payment.reference_number))
     story = _header(settings, title, meta, width)
@@ -153,7 +156,7 @@ def payment_pdf(payment, *, kind: str) -> bytes:
     for a in payment.allocations.filter(is_active=True).select_related(doc_attr):
         d = getattr(a, doc_attr)
         rows.append([Paragraph(_esc(d.invoice_number if is_receipt else d.bill_number), CELL),
-                     Paragraph(a.date.strftime("%d/%m/%Y"), CELL), Paragraph(m(a.amount), CELL_R)])
+                     Paragraph(format_date(a.date, bs=bs), CELL), Paragraph(m(a.amount), CELL_R)])
     rows.append([Paragraph("<b>Unallocated / Advance</b>", CELL), Paragraph("", CELL), Paragraph(m(payment.unallocated_amount), CELL_R)])
     t = Table(rows, colWidths=[width * 0.5, width * 0.25, width * 0.25])
     t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), HEAD_BG), ("GRID", (0, 0), (-1, -1), 0.25, GRID)]))
@@ -166,9 +169,10 @@ def payment_pdf(payment, *, kind: str) -> bytes:
 
 def expense_pdf(expense) -> bytes:
     settings = BusinessSettings.get_solo()
+    bs = settings.date_system == "BS"
     width = A4[0] - 24 * mm
     title = "EXPENSE VOUCHER" + (" (CANCELLED)" if expense.status == DocumentStatus.CANCELLED else "")
-    meta = [("Number", expense.expense_number), ("Date", expense.date.strftime("%d/%m/%Y")),
+    meta = [("Number", expense.expense_number), ("Date", format_date(expense.date, bs=bs)),
             ("Method", expense.get_payment_method_display())]
     if expense.reference_number:
         meta.append(("Reference", expense.reference_number))

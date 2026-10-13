@@ -99,6 +99,13 @@ class BusinessSettings(TimeStampedModel):
         validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("100"))],
     )
     invoice_footer = models.CharField(max_length=300, blank=True, default="Thank you for your business.")
+    # Blank until an admin picks one; the app asks on first login.
+    date_system = models.CharField(
+        max_length=2,
+        choices=[("AD", "English (A.D.)"), ("BS", "Nepali (B.S.)")],
+        blank=True,
+        default="",
+    )
 
     class Meta:
         verbose_name = "Business settings"

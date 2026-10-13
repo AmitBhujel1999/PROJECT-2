@@ -252,6 +252,8 @@ export interface BusinessSettings {
 	tax_label: string;
 	default_tax_rate: string;
 	invoice_footer: string;
+	/** '' until an admin chooses on first login. */
+	date_system: '' | 'AD' | 'BS';
 }
 
 export interface StockRow {

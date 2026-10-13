@@ -8,6 +8,6 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
         model = BusinessSettings
         fields = [
             "business_name", "address", "pan_vat_no", "phone", "email", "currency_code",
-            "currency_symbol", "tax_label", "default_tax_rate", "invoice_footer", "updated_at",
+            "currency_symbol", "tax_label", "default_tax_rate", "invoice_footer", "date_system", "updated_at",
         ]
         read_only_fields = ["updated_at"]

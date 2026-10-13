@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import datetime as dt
 import io
+import re
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -18,6 +19,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from apps.common.models import BusinessSettings
+from apps.common.nepali_date import format_date, uses_bs
 
 
 @dataclass
@@ -207,10 +209,31 @@ def pdf_response(pdf: bytes, filename: str, *, inline=False) -> HttpResponse:
     return response
 
 
+_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _to_bs(value):
+    """Turn A.D. dates (date objects or ISO strings) into B.S. text for exports."""
+    if isinstance(value, dt.datetime):
+        local = timezone.localtime(value)
+        return f"{format_date(local.date(), bs=True)} {local:%H:%M}"
+    if isinstance(value, dt.date):
+        return format_date(value, bs=True)
+    if isinstance(value, str) and _ISO_DATE.match(value):
+        try:
+            return format_date(dt.date.fromisoformat(value), bs=True)
+        except ValueError:
+            return value
+    return value
+
+
 def export_response(request, *, base_name: str, title: str, columns: list[Column], rows: list[dict],
                     meta=None, totals=None, summary=None, landscape_mode=True):
     """Return a CSV/PDF response if ``?export=csv|pdf`` was requested, else None."""
     kind = request.query_params.get("export")
+    if kind in ("csv", "pdf") and uses_bs():
+        rows = [{k: _to_bs(v) for k, v in row.items()} for row in rows]
+        meta = [(k, _to_bs(v)) for k, v in meta or []]
     if kind == "csv":
         return csv_response(export_filename(base_name, "csv"), columns, rows, title=title, meta=meta, totals=totals)
     if kind == "pdf":

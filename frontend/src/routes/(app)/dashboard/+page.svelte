@@ -18,7 +18,7 @@
 	} from '@lucide/svelte';
 	import { api } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { money, qty, date as fmtDate, today, addDays } from '$lib/utilities/format';
+	import { money, qty, date as fmtDate, shortDate, today, addDays } from '$lib/utilities/format';
 	import { SERIES, GRID, AXIS, axisNumber } from '$lib/utilities/chart';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import StatCard from '$lib/components/ui/stat-card.svelte';
@@ -60,7 +60,7 @@
 	}
 
 	const labels = $derived(
-		(d?.trend ?? []).map((t) => (d?.granularity === 'month' ? t.date.slice(0, 7) : fmtDate(t.date).slice(0, 5)))
+		(d?.trend ?? []).map((t) => (d?.granularity === 'month' ? t.date.slice(0, 7) : shortDate(t.date)))
 	);
 	const scales = {
 		x: { grid: { display: false }, ticks: { color: AXIS, maxRotation: 0, autoSkipPadding: 12, font: { size: 11 } } },

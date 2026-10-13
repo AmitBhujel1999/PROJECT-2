@@ -1,3 +1,6 @@
+import { calendar } from '$lib/stores/calendar.svelte';
+import { adToBs, bsToAd } from './nepali-date';
+
 /**
  * Display formatting only. Values are exact decimal strings from the API;
  * no accounting is computed in the browser.
@@ -35,16 +38,33 @@ export function currency(value: string | number | null | undefined, code = 'NPR'
 	return `${code} ${money(value)}`;
 }
 
-/** dd/mm/yyyy */
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** dd/mm/yyyy (A.D.) or yyyy/mm/dd (B.S.), following the company's date system. */
 export function date(value: string | null | undefined): string {
 	if (!value) return '';
+	if (calendar.system === 'BS') {
+		try {
+			const bs = adToBs(value);
+			return `${bs.year}/${pad2(bs.month)}/${pad2(bs.day)}`;
+		} catch {
+			/* outside the B.S. table: fall back to A.D. */
+		}
+	}
 	const [y, m, d] = value.slice(0, 10).split('-');
 	return `${d}/${m}/${y}`;
+}
+
+/** Short day label for charts: dd/mm (A.D.) or mm/dd (B.S.). */
+export function shortDate(value: string): string {
+	const full = date(value);
+	return calendar.system === 'BS' ? full.slice(5) : full.slice(0, 5);
 }
 
 export function dateTime(value: string | null | undefined): string {
 	if (!value) return '';
 	const d = new Date(value);
+	if (calendar.system === 'BS') return `${date(toIso(d))} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 	return d.toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
@@ -65,7 +85,15 @@ export function addDays(iso: string, days: number): string {
 	return toIso(dt);
 }
 
+/** First day of the month containing `iso` (a B.S. month in B.S. mode), as an A.D. ISO date. */
 export function firstOfMonth(iso = today()): string {
+	if (calendar.system === 'BS') {
+		try {
+			return bsToAd({ ...adToBs(iso), day: 1 });
+		} catch {
+			/* fall through */
+		}
+	}
 	return `${iso.slice(0, 8)}01`;
 }
 

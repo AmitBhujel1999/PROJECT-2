@@ -5,11 +5,13 @@
 	import { DropdownMenu } from 'bits-ui';
 	import { LogOut, KeyRound, UserRound, ChevronDown } from '@lucide/svelte';
 	import { auth } from '$lib/stores/auth.svelte';
+	import { calendar } from '$lib/stores/calendar.svelte';
 	import { phone } from '$lib/stores/viewport.svelte';
 	import { cn } from '$lib/utils';
 	import { MENUS, filterMenu, nepaliFiscalYear, type MenuLeaf } from './menu';
 	import MenuTree from './menu-tree.svelte';
 	import GlobalSearch from './global-search.svelte';
+	import DateSystemDialog from './date-system-dialog.svelte';
 	import BottomNav from '$lib/components/mobile/bottom-nav.svelte';
 	import { tableLabels } from '$lib/components/mobile/table-labels';
 
@@ -22,7 +24,12 @@
 	const bare = $derived(page.url.pathname === '/dashboard');
 	// Entry forms have their own save bar on phones, so the bottom navigation steps aside.
 	const entryForm = $derived(/\/new$/.test(page.url.pathname));
-	const fiscalYear = nepaliFiscalYear();
+	const fiscalYear = $derived(nepaliFiscalYear());
+
+	$effect(() => {
+		calendar.system = auth.settings?.date_system === 'BS' ? 'BS' : 'AD';
+	});
+	const askDateSystem = $derived(auth.settings?.date_system === '' && auth.can('settings.manage'));
 
 	const REPORTS = [
 		{ href: '/reports/sales', label: 'Sales', perm: 'reports.view' },
@@ -189,3 +196,5 @@
 		</main>
 	</div>
 {/if}
+
+{#if askDateSystem}<DateSystemDialog />{/if}
