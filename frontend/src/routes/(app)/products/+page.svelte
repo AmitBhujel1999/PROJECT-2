@@ -53,7 +53,7 @@
 <PageHeader title="Products" description="Items you buy and sell. Products with history are deactivated, never deleted.">
 	{#snippet actions()}
 		{#if canManage}
-			<Button variant="outline" href="/products/bulk" data-testid="bulk-products"><Sheet />Edit many</Button>
+			<Button variant="outline" href="/products/bulk" data-testid="bulk-products"><Sheet />Bulk update</Button>
 			<Button onclick={() => ((editing = null), (formOpen = true))} data-testid="new-product"><Plus />New product</Button>
 		{/if}
 	{/snippet}

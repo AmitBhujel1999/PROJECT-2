@@ -20,8 +20,8 @@
 	]);
 </script>
 
-<svelte:head><title>Edit Many {side.plural} · Accounting</title></svelte:head>
+<svelte:head><title>Bulk Update {side.plural} · Accounting</title></svelte:head>
 
-<PageHeader title="Edit Many {side.plural}" description="Change details of many {side.plural.toLowerCase()} at once, or add new ones from Excel." back={{ href: side.route, label: side.plural }} />
+<PageHeader title="Bulk Update {side.plural}" description="Change details of many {side.plural.toLowerCase()} at once, or add new ones from Excel." back={{ href: side.route, label: side.plural }} />
 
 {#key type}<BulkGrid path={side.api} {columns} noun={side.label.toLowerCase()} />{/key}

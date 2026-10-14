@@ -1,4 +1,4 @@
-"""Excel format files and uploads for the "Edit many" screens.
+"""Excel format files and uploads for the "Bulk update" screens.
 
 The format (template) is an .xlsx with one heading row, two example rows and
 drop-down lists, plus a "How to fill" sheet. An upload is read back into plain
@@ -148,7 +148,7 @@ def template_response(fmt: SheetFormat) -> HttpResponse:
         ("2. Delete the two grey example rows (or type over them).", False),
         ("3. Red headings must be filled in. Blue ones can be left empty.", False),
         ("4. Do not change the headings in row 1.", False),
-        ("5. Save the file, then use 'Upload Excel' on the 'Edit many' screen.", False),
+        ("5. Save the file, then use 'Upload Excel' on the 'Bulk update' screen.", False),
         ("6. Check the rows on screen, then press Save. Nothing is saved before that.", False),
         ("", False),
         (fmt.match_note, False),

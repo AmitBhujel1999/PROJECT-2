@@ -63,7 +63,7 @@ export const MENUS: TopMenu[] = [
 				]
 			},
 			{
-				label: 'Edit Many',
+				label: 'Bulk Update',
 				children: [
 					{ label: 'Products', href: '/products/bulk', perm: 'products.manage' },
 					{ label: 'Customers', href: '/customers/bulk', perm: 'parties.manage' },
