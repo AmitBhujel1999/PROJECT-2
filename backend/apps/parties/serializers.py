@@ -7,6 +7,7 @@ from .models import CreditTerms, Party
 
 class PartySerializer(serializers.ModelSerializer):
     credit_limit = serializers.DecimalField(max_digits=16, decimal_places=2, min_value=Decimal("0"), required=False)
+    opening_balance = serializers.DecimalField(max_digits=16, decimal_places=2, min_value=Decimal("0"), required=False)
     credit_terms_display = serializers.CharField(source="get_credit_terms_display", read_only=True)
     type_display = serializers.CharField(source="get_type_display", read_only=True)
 
@@ -14,7 +15,7 @@ class PartySerializer(serializers.ModelSerializer):
         model = Party
         fields = [
             "id", "type", "type_display", "name", "pan_vat_no", "phone", "email", "address",
-            "credit_terms", "credit_terms_display", "credit_days", "credit_limit", "notes",
+            "credit_terms", "credit_terms_display", "credit_days", "credit_limit", "opening_balance", "opening_side", "notes",
             "is_active", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "is_active", "created_at", "updated_at"]

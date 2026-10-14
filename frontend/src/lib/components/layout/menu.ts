@@ -58,7 +58,8 @@ export const MENUS: TopMenu[] = [
 					{ label: 'Vendors', href: '/vendors', perm: 'parties.view' },
 					{ label: 'Expense Categories', href: '/expenses/categories', perm: 'expenses.view' },
 					{ label: 'Cash & Bank Accounts', href: '/cash-bank', perm: 'cashbank.view' },
-					{ label: 'Chart of Accounts', href: '/journal/ledgers', perm: 'journal.view' }
+					{ label: 'Chart of Accounts', href: '/journal/ledgers', perm: 'journal.view' },
+					{ label: 'Opening Balances', href: '/reports/opening-balances', perm: 'reports.view' }
 				]
 			},
 			{
@@ -189,8 +190,10 @@ export const MENUS: TopMenu[] = [
 				open: true,
 				children: [
 					{ label: 'Profit & Loss', href: '/reports/profit-loss', perm: 'reports.view' },
+					{ label: 'Trial Balance', href: '/reports/trial-balance', perm: 'reports.view' },
 					{ label: 'Balance Sheet', href: '/reports/balance-sheet', perm: 'reports.view' },
-					{ label: 'Cash Flow', href: '/reports/cash-flow', perm: 'reports.view' }
+					{ label: 'Cash Flow', href: '/reports/cash-flow', perm: 'reports.view' },
+					{ label: 'Opening Balances', href: '/reports/opening-balances', perm: 'reports.view' }
 				]
 			},
 			'separator',

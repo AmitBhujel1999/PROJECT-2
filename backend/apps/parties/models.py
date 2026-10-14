@@ -34,11 +34,18 @@ CREDIT_TERM_DAYS = {
 }
 
 
+class OpeningSide(models.TextChoices):
+    DR = "DR", "Dr"
+    CR = "CR", "Cr"
+
+
 class Party(TimeStampedModel):
     """A customer or a vendor.
 
     Balances are intentionally NOT stored here: receivables/payables are always
-    derived from the underlying invoices, bills, receipts and payments.
+    derived from the underlying invoices, bills, receipts and payments. The
+    opening balance is what was owed when the books started (Dr = the party owes
+    us, Cr = we owe the party); it has no date and counts before every entry.
     """
 
     type = models.CharField(max_length=10, choices=PartyType.choices, db_index=True)
@@ -50,6 +57,8 @@ class Party(TimeStampedModel):
     credit_terms = models.CharField(max_length=10, choices=CreditTerms.choices, default=CreditTerms.CASH)
     credit_days = models.PositiveIntegerField(default=0)
     credit_limit = models.DecimalField(**MONEY_FIELD, default=Decimal("0"))
+    opening_balance = models.DecimalField(**MONEY_FIELD, default=Decimal("0"))
+    opening_side = models.CharField(max_length=2, choices=OpeningSide.choices, default=OpeningSide.DR)
     notes = models.TextField(blank=True, default="")
     is_active = models.BooleanField(default=True, db_index=True)
 
@@ -60,10 +69,16 @@ class Party(TimeStampedModel):
         constraints = [
             models.CheckConstraint(condition=Q(credit_limit__gte=0), name="party_credit_limit_gte_0"),
             models.CheckConstraint(condition=Q(credit_days__lte=3650), name="party_credit_days_lte_3650"),
+            models.CheckConstraint(condition=Q(opening_balance__gte=0), name="party_opening_gte_0"),
         ]
 
     def __str__(self):
         return self.name
+
+    @property
+    def signed_opening(self) -> Decimal:
+        """Opening balance with debit positive."""
+        return self.opening_balance if self.opening_side == OpeningSide.DR else -self.opening_balance
 
     def save(self, *args, **kwargs):
         if self.credit_terms != CreditTerms.CUSTOM:

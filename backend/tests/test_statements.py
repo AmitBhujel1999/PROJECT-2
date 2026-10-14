@@ -100,3 +100,95 @@ def test_staff_cannot_see_statements(db):
 
     c = client_for(make_user(Role.STAFF, "st_staff"))
     assert c.get("/api/reports/balance-sheet/").status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Party opening balances, Trial Balance, Opening Balances screen
+# ---------------------------------------------------------------------------
+def _openings(api, customer, vendor):
+    payload = {
+        "customers": [{"id": customer.pk, "opening_balance": "2000", "opening_side": "DR"}],
+        "vendors": [{"id": vendor.pk, "opening_balance": "3000", "opening_side": "CR"}],
+    }
+    r = api.post("/api/reports/opening-balances/", payload, format="json")
+    assert r.status_code == 200, r.content
+    return r.json()
+
+
+def test_party_opening_flows_into_ledger_aging_and_balance_sheet(api, books, customer, vendor):
+    _openings(api, customer, vendor)
+    ledger = api.get(f"/api/customers/{customer.pk}/ledger/", {"end_date": "2026-09-30"}).json()["data"]
+    assert ledger["opening_balance"] == "2000.00"
+    aging = api.get("/api/reports/receivables-aging/", {"as_of": "2026-09-30"}).json()["data"]
+    row = next(r for r in aging["results"] if r["party_id"] == customer.pk)
+    # The sale cancelled after 30 Sep (today) is still owed on that date: 2,000 + 452.
+    assert row["opening"] == "2000.00" and row["net_balance"] == "2452.00"
+    bs = api.get("/api/reports/balance-sheet/", {"as_of": "2026-09-30"}).json()["data"]
+    assert bs["difference"] == "0.00", bs
+    rows = {r["name"]: r["amount"] for g in bs["liabilities"] + bs["assets"] for r in g["rows"]}
+    assert rows["Sundry Debtors"] == "2000.00"
+    assert rows["Sundry Creditors"] == "3969.00"
+    # 101,000 + customer 2,000 Dr - vendor 3,000 Cr.
+    assert rows["Difference in opening balances"] == "100000.00"
+
+
+@pytest.mark.parametrize("start", [None, "2026-09-06"])
+def test_trial_balance_balances(api, books, customer, vendor, start):
+    _openings(api, customer, vendor)
+    params = {"end_date": "2026-09-30", **({"start_date": start} if start else {})}
+    d = api.get("/api/reports/trial-balance/", params).json()["data"]
+    assert d["difference"] == "0.00", d
+    assert d["total_debit"] == d["total_credit"]
+    groups = {g["key"]: g for g in d["groups"]}
+    assert groups["SUNDRY_DEBTORS"]["debit"] == "2000.00"
+    assert groups["SUNDRY_CREDITORS"]["credit"] == "3969.00"
+    assert groups["CASH_BANK"]["debit"] == "119630.00"
+    if start:
+        capital = {r["name"]: r for r in groups["CAPITAL"]["rows"]}
+        assert "Profit & Loss A/c (before this period)" in capital
+        assert groups["STOCK"]["debit"] == "1725.00"  # stock value after the 5 Sep sale
+    else:
+        assert groups["SALES"]["credit"] == "1000.00" and groups["PURCHASES"]["debit"] == "1300.00"
+    csv = api.get("/api/reports/trial-balance/", {**params, "export": "csv", "detailed": "1"})
+    assert csv.status_code == 200 and b"Debit" in csv.content
+
+
+def test_opening_balances_screen(api, books, customer, vendor):
+    d = api.get("/api/reports/opening-balances/").json()["data"]
+    assert d["totals"]["cash"]["debit"] == "100000.00"
+    assert d["totals"]["stock"]["debit"] == "1000.00"
+    assert d["difference"] == {"debit": "101000.00", "credit": "0.00"}
+    assert all(d["can_edit"].values())
+
+    capital = LedgerAccount.objects.get(name="Capital T")
+    body = _openings(api, customer, vendor)
+    assert body["message"] == "2 opening balance(s) saved."
+    r = api.post("/api/reports/opening-balances/", {"ledgers": [{"id": capital.pk, "opening_balance": "100000", "opening_side": "CR"}]}, format="json")
+    d = r.json()["data"]
+    assert d["difference"] == {"debit": "0.00", "credit": "0.00"}
+    # Saving the same values again changes nothing.
+    assert api.post("/api/reports/opening-balances/", {"ledgers": [{"id": capital.pk, "opening_balance": "100000", "opening_side": "CR"}]}, format="json").json()["message"] == "No changes to save."
+
+
+def test_opening_stock_rate_locked_once_posted(api, books, product_factory):
+    p = books["product"]
+    r = api.post("/api/reports/opening-balances/", {"stock": [{"id": p.pk, "opening_stock": "10", "opening_rate": "150"}]}, format="json")
+    assert r.status_code == 400 and r.json()["error"]["code"] == "OPENING_RATE_LOCKED"
+    fresh = product_factory(stock=D("0"), cost=D("50"))
+    r = api.post("/api/reports/opening-balances/", {"stock": [{"id": fresh.pk, "opening_stock": "4", "opening_rate": "60"}]}, format="json")
+    assert r.status_code == 200, r.content
+    assert r.json()["data"]["totals"]["stock"]["debit"] == "1240.00"  # 1,000 + 4 x 60
+
+
+def test_opening_balances_need_section_permission(db, customer):
+    from apps.users.models import Role
+
+    from .conftest import client_for, make_user
+
+    c = client_for(make_user(Role.ACCOUNTANT, "ob_acct"))
+    d = c.get("/api/reports/opening-balances/").json()["data"]
+    if not d["can_edit"]["customers"]:
+        r = c.post("/api/reports/opening-balances/", {"customers": [{"id": customer.pk, "opening_balance": "1", "opening_side": "DR"}]}, format="json")
+        assert r.status_code == 403
+    staff = client_for(make_user(Role.STAFF, "ob_staff"))
+    assert staff.get("/api/reports/opening-balances/").status_code == 403

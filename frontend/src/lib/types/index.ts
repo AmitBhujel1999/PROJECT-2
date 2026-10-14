@@ -67,6 +67,8 @@ export interface Party {
 	credit_terms_display: string;
 	credit_days: number;
 	credit_limit: Money;
+	opening_balance: Money;
+	opening_side: 'DR' | 'CR';
 	notes: string;
 	is_active: boolean;
 	created_at: string;
@@ -543,4 +545,73 @@ export interface CashFlow {
 	closing_cash: string;
 	difference: string;
 	accounts: StatementRow[];
+}
+
+export interface TrialBalanceRow {
+	id?: number | null;
+	name: string;
+	debit: string;
+	credit: string;
+	link?: string;
+}
+
+export interface TrialBalanceGroup {
+	key: string;
+	label: string;
+	rows: TrialBalanceRow[];
+	debit: string;
+	credit: string;
+	count: number;
+}
+
+export interface TrialBalance {
+	start_date: string | null;
+	end_date: string;
+	groups: TrialBalanceGroup[];
+	total_debit: string;
+	total_credit: string;
+	difference: string;
+}
+
+export type OpeningSection = 'cash' | 'ledgers' | 'customers' | 'vendors' | 'stock';
+
+export interface OpeningRow {
+	id: number;
+	name: string;
+	is_active: boolean;
+	opening_balance: string;
+	opening_side: 'DR' | 'CR';
+	kind?: string;
+	group?: string;
+	group_display?: string;
+	phone?: string;
+}
+
+export interface OpeningStockRow {
+	id: number;
+	name: string;
+	sku_code: string;
+	unit: string;
+	is_active: boolean;
+	opening_stock: string;
+	opening_rate: string;
+	opening_amount: string;
+}
+
+export interface DebitCredit {
+	debit: string;
+	credit: string;
+}
+
+export interface OpeningBalances {
+	cash: OpeningRow[];
+	ledgers: OpeningRow[];
+	customers: OpeningRow[];
+	vendors: OpeningRow[];
+	stock: OpeningStockRow[];
+	totals: Record<OpeningSection, DebitCredit>;
+	total_debit: string;
+	total_credit: string;
+	difference: DebitCredit;
+	can_edit: Record<OpeningSection, boolean>;
 }

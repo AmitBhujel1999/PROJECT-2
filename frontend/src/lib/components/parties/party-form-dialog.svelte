@@ -4,6 +4,11 @@
 	import { CREDIT_TERMS } from '$lib/utilities/format';
 	import type { Party, PartyType } from '$lib/types';
 	import { SIDES } from './config';
+
+	const OPENING_SIDES = [
+		{ value: 'DR', label: 'Dr' },
+		{ value: 'CR', label: 'Cr' }
+	];
 	import Dialog from '$lib/components/ui/dialog.svelte';
 	import Field from '$lib/components/ui/field.svelte';
 	import Input from '$lib/components/ui/input.svelte';
@@ -20,7 +25,7 @@
 	}: { open?: boolean; type: PartyType; party?: Party | null; initialName?: string; onSaved?: (p: Party) => void } = $props();
 
 	const side = $derived(SIDES[type]);
-	const blank = () => ({ name: initialName, pan_vat_no: '', phone: '', email: '', address: '', credit_terms: type === 'CUSTOMER' ? 'DAYS_30' : 'DAYS_30', credit_days: 30, credit_limit: '0', notes: '' });
+	const blank = () => ({ name: initialName, pan_vat_no: '', phone: '', email: '', address: '', credit_terms: type === 'CUSTOMER' ? 'DAYS_30' : 'DAYS_30', credit_days: 30, credit_limit: '0', opening_balance: '0', opening_side: type === 'CUSTOMER' ? 'DR' : 'CR', notes: '' });
 	let form = $state(blank());
 	let errors = $state<Record<string, string>>({});
 	let busy = $state(false);
@@ -29,7 +34,7 @@
 		if (open) {
 			errors = {};
 			form = party
-				? { name: party.name, pan_vat_no: party.pan_vat_no, phone: party.phone, email: party.email, address: party.address, credit_terms: party.credit_terms, credit_days: party.credit_days, credit_limit: party.credit_limit, notes: party.notes }
+				? { name: party.name, pan_vat_no: party.pan_vat_no, phone: party.phone, email: party.email, address: party.address, credit_terms: party.credit_terms, credit_days: party.credit_days, credit_limit: party.credit_limit, opening_balance: party.opening_balance, opening_side: party.opening_side, notes: party.notes }
 				: blank();
 		}
 	});
@@ -67,6 +72,13 @@
 		{#if type === 'CUSTOMER'}
 			<Field label="Credit limit" for="pf-limit" error={errors.credit_limit} hint="0 = no limit"><Input id="pf-limit" type="number" step="0.01" min="0" bind:value={form.credit_limit} class="text-right" /></Field>
 		{/if}
+		<Field label="Opening balance" for="pf-opening" error={errors.opening_balance}
+			hint={type === 'CUSTOMER' ? 'Dr = customer owes you; Cr = advance received' : 'Cr = you owe the vendor; Dr = advance paid'}>
+			<div class="flex gap-2">
+				<Input id="pf-opening" type="number" step="0.01" min="0" bind:value={form.opening_balance} class="text-right" />
+				<Select id="pf-opening-side" bind:value={form.opening_side} options={OPENING_SIDES} class="w-20" aria-label="Dr or Cr" />
+			</div>
+		</Field>
 		<Field label="Address" for="pf-address" class="sm:col-span-2"><Textarea id="pf-address" bind:value={form.address} rows={2} /></Field>
 		<Field label="Notes" for="pf-notes" class="sm:col-span-2"><Textarea id="pf-notes" bind:value={form.notes} rows={2} /></Field>
 	</form>

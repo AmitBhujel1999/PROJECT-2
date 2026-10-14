@@ -408,7 +408,8 @@ def balance_as_of(cfg: AccountConfig, as_of: dt.date, party_id=None) -> Decimal:
         reversed=Coalesce(Sum("amount", filter=Q(status=DocumentStatus.CANCELLED, cancelled_at__date__lte=as_of, date__lte=as_of)), MZERO),
     )
     journal = sum(_journal(cfg, as_of=as_of, party_id=party_id).values(), Decimal("0.00"))
-    return money((d["issued"] - d["reversed"]) - (p["paid"] - p["reversed"]) + journal)
+    opening = sum(_opening(cfg, party_id).values(), Decimal("0.00"))
+    return money((d["issued"] - d["reversed"]) - (p["paid"] - p["reversed"]) + journal + opening)
 
 
 def _journal(cfg: AccountConfig, **kwargs) -> dict[int, Decimal]:
@@ -416,6 +417,17 @@ def _journal(cfg: AccountConfig, **kwargs) -> dict[int, Decimal]:
     from apps.journal.services import party_effect
 
     return party_effect(party_type=cfg.party_type, document_is_debit=cfg.document_is_debit, **kwargs)
+
+
+def _opening(cfg: AccountConfig, party_id=None) -> dict[int, Decimal]:
+    """Opening balances in "amount owed" terms (positive = customer owes us / we owe the vendor)."""
+    from apps.parties.models import Party
+
+    qs = Party.objects.filter(type=cfg.party_type, opening_balance__gt=0)
+    if party_id:
+        qs = qs.filter(pk=party_id)
+    sign = 1 if cfg.document_is_debit else -1
+    return {p.pk: money(sign * p.signed_opening) for p in qs.only("pk", "opening_balance", "opening_side")}
 
 
 # ---------------------------------------------------------------------------
@@ -451,13 +463,15 @@ def aging_summary(cfg: AccountConfig, as_of: dt.date, *, party_id=None, search=N
         .order_by()
     }
     journal = {k: v for k, v in _journal(cfg, as_of=as_of, party_id=party_id).items() if v}
-    party_ids = set(by_party) | set(unallocated) | set(journal)
+    opening = _opening(cfg, party_id)
+    party_ids = set(by_party) | set(unallocated) | set(journal) | set(opening)
     parties = Party.objects.filter(pk__in=party_ids, type=cfg.party_type)
     if search:
         parties = parties.filter(Q(name__icontains=search) | Q(phone__icontains=search) | Q(pan_vat_no__icontains=search))
     rows = []
     totals = {name: Decimal("0.00") for name, _ in AGING_BUCKETS} | {
-        "total": Decimal("0.00"), "unallocated": Decimal("0.00"), "journal": Decimal("0.00"), "net_balance": Decimal("0.00")
+        "total": Decimal("0.00"), "unallocated": Decimal("0.00"), "journal": Decimal("0.00"), "opening": Decimal("0.00"),
+        "net_balance": Decimal("0.00"),
     }
     for party in parties.order_by("name"):
         base = by_party.get(party.pk, {})
@@ -472,8 +486,9 @@ def aging_summary(cfg: AccountConfig, as_of: dt.date, *, party_id=None, search=N
             "document_count": base.get("document_count", 0),
             "unallocated": money(unallocated.get(party.pk, 0)),
             "journal": money(journal.get(party.pk, 0)),
+            "opening": money(opening.get(party.pk, 0)),
         }
-        row["net_balance"] = money(row["total"] - row["unallocated"] + row["journal"])
+        row["net_balance"] = money(row["total"] - row["unallocated"] + row["journal"] + row["opening"])
         for key in totals:
             totals[key] += row[key]
         rows.append(row)
@@ -519,11 +534,13 @@ def party_aging_detail(cfg: AccountConfig, party_id: int, as_of: dt.date) -> dic
     total = money(sum(totals.values(), Decimal("0")))
     unalloc = money(sum((p["unallocated"] for p in payments), Decimal("0")))
     journal = money(_journal(cfg, as_of=as_of, party_id=party_id).get(party_id, 0))
+    opening = money(_opening(cfg, party_id).get(party_id, 0))
     return {
         "as_of": as_of,
         "buckets": [{"key": k, "label": label} for k, label in AGING_BUCKETS],
         "totals": {k: money(v) for k, v in totals.items()}
-        | {"total": total, "unallocated": unalloc, "journal": journal, "net_balance": money(total - unalloc + journal)},
+        | {"total": total, "unallocated": unalloc, "journal": journal, "opening": opening,
+           "net_balance": money(total - unalloc + journal + opening)},
         "documents": documents,
         "unallocated_payments": payments,
     }
@@ -535,7 +552,10 @@ def party_aging_detail(cfg: AccountConfig, party_id: int, as_of: dt.date) -> dic
 def ledger(cfg: AccountConfig, party_id: int, *, start: dt.date | None = None, end: dt.date | None = None) -> dict:
     """Party ledger derived from invoices/bills, payments and their cancellations."""
     end = end or timezone.localdate()
-    opening = balance_as_of(cfg, start - dt.timedelta(days=1), party_id) if start else Decimal("0.00")
+    if start:
+        opening = balance_as_of(cfg, start - dt.timedelta(days=1), party_id)
+    else:
+        opening = _opening(cfg, party_id).get(party_id, Decimal("0.00"))
     entries = []
 
     def in_range(field):
@@ -650,7 +670,8 @@ def party_summary(cfg: AccountConfig, party) -> dict:
     outstanding = money(d["total"] - d["paid"])
     last_dates = [x for x in (d["last"], p["last"]) if x]
     journal = money(_journal(cfg, party_id=party.pk).get(party.pk, 0))
-    net = money(outstanding - p["unallocated"] + journal)
+    opening = money(_opening(cfg, party.pk).get(party.pk, 0))
+    net = money(outstanding - p["unallocated"] + journal + opening)
     return {
         "party_id": party.pk,
         "total_documents": money(d["total"]),
@@ -662,6 +683,7 @@ def party_summary(cfg: AccountConfig, party) -> dict:
         "current": money(d["current"]),
         "unallocated": money(p["unallocated"]),
         "journal": journal,
+        "opening": opening,
         "net_balance": net,
         "last_transaction_date": max(last_dates) if last_dates else None,
         "credit_limit": party.credit_limit,
@@ -680,10 +702,15 @@ def totals_overview(cfg: AccountConfig) -> dict:
         s=Coalesce(Sum(F("amount") - F("allocated_amount")), MZERO)
     )["s"]
     journal = sum(_journal(cfg).values(), Decimal("0.00"))
+    openings = _opening(cfg).values()
+    opening = sum(openings, Decimal("0.00"))
+    owed = sum((v for v in openings if v > 0), Decimal("0.00"))
     return {
-        "outstanding": money(agg["outstanding"]),
+        # Opening balances count as outstanding (or, when in the party's favour, as advances).
+        "outstanding": money(agg["outstanding"] + owed),
         "overdue": money(agg["overdue"]),
-        "unallocated": money(unalloc),
+        "unallocated": money(unalloc + owed - opening),
         "journal": money(journal),
+        "opening": money(opening),
     }
 

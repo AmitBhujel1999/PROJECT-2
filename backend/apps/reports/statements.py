@@ -178,8 +178,9 @@ def profit_and_loss(start: dt.date | None, end: dt.date) -> dict:
 # ---------------------------------------------------------------------------
 # Balance Sheet
 # ---------------------------------------------------------------------------
-def _party_balances(as_of: dt.date) -> dict:
-    """Customer and vendor balances, counting only active documents and payments."""
+def party_owed(as_of: dt.date) -> dict[int, Decimal]:
+    """What each party owes us (customers) or we owe them (vendors), counting only
+    active documents and payments, journal lines and opening balances."""
     from apps.journal.services import active_lines
     from apps.parties.models import PartyType
     from apps.payables.models import VendorPayment
@@ -202,6 +203,15 @@ def _party_balances(as_of: dt.date) -> dict:
         owed[r["party_id"]] += net if r["party__type"] == PartyType.CUSTOMER else -net
     from apps.parties.models import Party
 
+    for p in Party.objects.filter(opening_balance__gt=0).only("pk", "type", "opening_balance", "opening_side"):
+        owed[p.pk] += p.signed_opening if p.type == PartyType.CUSTOMER else -p.signed_opening
+    return {k: money(v) for k, v in owed.items() if v}
+
+
+def _party_balances(as_of: dt.date) -> dict:
+    from apps.parties.models import Party, PartyType
+
+    owed = party_owed(as_of)
     types = dict(Party.objects.filter(pk__in=owed).values_list("pk", "type"))
     out = {"debtors": D0, "customer_advances": D0, "creditors": D0, "supplier_advances": D0}
     for pid, amount in owed.items():
@@ -224,11 +234,25 @@ def _vat_balance(as_of: dt.date) -> Decimal:
     return money(out - paid)
 
 
+def opening_difference() -> Decimal:
+    """Signed (Dr +) total of every opening balance; it has no matching entry."""
+    from apps.cashbank.models import MoneyAccount
+    from apps.journal.models import LedgerAccount
+    from apps.journal.services import signed_opening
+    from apps.parties.models import Party
+
+    return money(
+        sum((a.opening_balance for a in MoneyAccount.objects.all()), D0)
+        + sum((signed_opening(lg) for lg in LedgerAccount.objects.all()), D0)
+        + sum((p.signed_opening for p in Party.objects.filter(opening_balance__gt=0)), D0)
+    )
+
+
 def balance_sheet(as_of: dt.date) -> dict:
     from apps.cashbank.models import MoneyAccount
     from apps.cashbank.services import balance as account_balance
     from apps.journal.models import GROUP_NATURE, LedgerAccount, Nature
-    from apps.journal.services import ledger_balances, signed_opening
+    from apps.journal.services import ledger_balances
 
     cash = [
         {"id": a.pk, "name": a.name, "amount": account_balance(a, as_of)}
@@ -252,11 +276,7 @@ def balance_sheet(as_of: dt.date) -> dict:
         by_group[lg.group].append({"id": lg.pk, "name": lg.name, "amount": money(amount if nature == Nature.ASSET else -amount)})
 
     profit = profit_and_loss(None, as_of)["net_profit"]
-    opening_difference = money(
-        sum((a.opening_balance for a in MoneyAccount.objects.all()), D0)
-        + opening_stock_value(as_of)
-        + sum((signed_opening(lg) for lg in LedgerAccount.objects.all()), D0)
-    )
+    opening_diff = money(opening_difference() + opening_stock_value(as_of))
 
     def group(key, label, rows):
         return {"key": key, "label": label, "rows": rows, "total": money(sum((r["amount"] for r in rows), D0))}
@@ -267,7 +287,7 @@ def balance_sheet(as_of: dt.date) -> dict:
         group("CAPITAL", "Capital Account", [
             *by_group[AccountGroup.CAPITAL],
             {"id": None, "name": "Profit & Loss A/c", "amount": profit, "link": "profit-loss"},
-            {"id": None, "name": "Difference in opening balances", "amount": opening_difference},
+            {"id": None, "name": "Difference in opening balances", "amount": opening_diff},
         ]),
         group("RESERVES", "Reserves & Surplus", by_group[AccountGroup.RESERVES]),
         group("LOANS", "Loans (Liability)", by_group[AccountGroup.LOANS]),
@@ -378,4 +398,104 @@ def cash_flow(start: dt.date, end: dt.date) -> dict:
         "closing_cash": closing,
         "difference": money(opening + net - closing),
         "accounts": [{"id": a.pk, "name": a.name, "amount": account_balance(a, end)} for a in accounts],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Trial Balance
+# ---------------------------------------------------------------------------
+def trial_balance(start: dt.date | None, end: dt.date) -> dict:
+    """Closing balance of every account on ``end``, grouped, in Debit / Credit columns.
+
+    Balance-sheet accounts show their closing balance. Income and expense accounts
+    show the movement from ``start`` (all time when empty); profit made before
+    ``start`` shows as "Profit & Loss A/c" in Capital. Closing stock is left out,
+    as in Tally/Busy: opening stock, purchases and sales stand for it.
+    """
+    from apps.cashbank.models import MoneyAccount
+    from apps.cashbank.services import balance as account_balance
+    from apps.journal.models import GROUP_NATURE, AccountGroup, LedgerAccount, Nature
+    from apps.journal.services import ledger_balances
+    from apps.parties.models import Party, PartyType
+
+    def row(name, signed, **extra):
+        """``signed`` is debit positive."""
+        signed = money(signed)
+        return {"name": name, "debit": signed if signed > 0 else money(D0), "credit": -signed if signed < 0 else money(D0), **extra}
+
+    groups: dict[str, dict] = {}
+
+    def add(key, label, r):
+        if r["debit"] or r["credit"]:
+            groups.setdefault(key, {"key": key, "label": label, "rows": []})["rows"].append(r)
+
+    labels = dict(AccountGroup.choices)
+    ledgers = ledger_balances(end)
+    by_ledger_group = defaultdict(list)
+    for lg in LedgerAccount.objects.order_by("name"):
+        if GROUP_NATURE[lg.group] in (Nature.ASSET, Nature.LIABILITY):
+            by_ledger_group[lg.group].append(row(lg.name, ledgers.get(lg.pk, D0), id=lg.pk, link="ledger"))
+
+    pl = profit_and_loss(start, end)
+
+    # Capital & liabilities
+    for r in by_ledger_group[AccountGroup.CAPITAL]:
+        add("CAPITAL", labels["CAPITAL"], r)
+    add("CAPITAL", labels["CAPITAL"], row("Difference in opening balances", -(opening_difference() + opening_stock_value(end))))
+    if start:
+        earlier = profit_and_loss(None, start - dt.timedelta(days=1))["net_profit"]
+        add("CAPITAL", labels["CAPITAL"], row("Profit & Loss A/c (before this period)", -earlier, link="profit-loss"))
+    for key in ("RESERVES", "LOANS", "CURRENT_LIABILITIES"):
+        for r in by_ledger_group[key]:
+            add(key, labels[key], r)
+
+    owed = party_owed(end)
+    parties = Party.objects.filter(pk__in=owed).order_by("name").only("pk", "name", "type")
+    for p in parties.filter(type=PartyType.VENDOR):
+        add("SUNDRY_CREDITORS", "Sundry Creditors", row(p.name, -owed[p.pk], id=p.pk, link="vendor"))
+    vat = _vat_balance(end)
+    add("DUTIES_TAXES", labels["DUTIES_TAXES"], row("VAT", -vat))
+    for r in by_ledger_group[AccountGroup.DUTIES_TAXES]:
+        add("DUTIES_TAXES", labels["DUTIES_TAXES"], r)
+
+    # Assets
+    for key in ("FIXED_ASSETS", "INVESTMENTS", "CURRENT_ASSETS"):
+        for r in by_ledger_group[key]:
+            add(key, labels[key], r)
+    for p in parties.filter(type=PartyType.CUSTOMER):
+        add("SUNDRY_DEBTORS", "Sundry Debtors", row(p.name, owed[p.pk], id=p.pk, link="customer"))
+    for a in MoneyAccount.objects.order_by("name"):
+        add("CASH_BANK", "Cash & Bank", row(a.name, account_balance(a, end), id=a.pk, link="cash"))
+    for r in by_ledger_group[AccountGroup.LOANS_ADVANCES]:
+        add("LOANS_ADVANCES", labels["LOANS_ADVANCES"], r)
+
+    # Trading and profit & loss accounts for the period
+    add("STOCK", "Stock-in-hand", row("Opening stock", pl["opening_stock"] + pl["opening_stock_added"], link="stock"))
+    add("SALES", "Sales Accounts", row("Sales (excluding VAT)", -pl["sales"], link="sales"))
+    add("PURCHASES", "Purchase Accounts", row("Purchases (excluding VAT)", pl["purchases"], link="purchases"))
+    for key, rows, sign in [
+        ("DIRECT_INCOME", pl["direct_income"], -1),
+        ("DIRECT_EXPENSES", pl["direct_expenses"], 1),
+        ("INDIRECT_INCOME", pl["indirect_income"], -1),
+    ]:
+        for r in rows:
+            add(key, labels[key], row(r["name"], sign * r["amount"], id=r["id"], link="ledger"))
+    for r in pl["expense_categories"]:
+        add("INDIRECT_EXPENSES", labels["INDIRECT_EXPENSES"], row(r["name"], r["amount"], id=r["id"], link="expense-category"))
+    for r in pl["indirect_expenses"]:
+        add("INDIRECT_EXPENSES", labels["INDIRECT_EXPENSES"], row(r["name"], r["amount"], id=r["id"], link="ledger"))
+
+    out = []
+    for g in groups.values():
+        net = money(sum((r["debit"] - r["credit"] for r in g["rows"]), D0))
+        out.append(g | {"debit": max(net, money(D0)), "credit": max(-net, money(D0)), "count": len(g["rows"])})
+    total_debit = money(sum((g["debit"] for g in out), D0))
+    total_credit = money(sum((g["credit"] for g in out), D0))
+    return {
+        "start_date": start,
+        "end_date": end,
+        "groups": out,
+        "total_debit": total_debit,
+        "total_credit": total_credit,
+        "difference": money(total_debit - total_credit),
     }

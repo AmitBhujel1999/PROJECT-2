@@ -33,6 +33,7 @@
 
 	const REPORTS = [
 		{ href: '/reports/profit-loss', label: 'Profit & Loss', perm: 'reports.view' },
+		{ href: '/reports/trial-balance', label: 'Trial Balance', perm: 'reports.view' },
 		{ href: '/reports/balance-sheet', label: 'Balance Sheet', perm: 'reports.view' },
 		{ href: '/reports/cash-flow', label: 'Cash Flow', perm: 'reports.view' },
 		{ href: '/reports/day-book', label: 'Day Book', perm: 'reports.view' },

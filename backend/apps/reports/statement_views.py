@@ -8,10 +8,11 @@ from apps.common.responses import ok
 from apps.common.utils import parse_date_param
 from apps.users.permissions import RolePermission
 
-from . import statements
+from . import openings, statements
 from .exporters import Column, export_response
 
 COLUMNS = [Column("label", "Particulars", width=3), Column("amount", "Amount", numeric=True), Column("total", "Total", numeric=True)]
+TB_COLUMNS = [Column("label", "Particulars", width=3), Column("debit", "Debit", numeric=True), Column("credit", "Credit", numeric=True)]
 INDENT = "    "
 
 
@@ -107,3 +108,41 @@ class CashFlowView(StatementView):
             {"label": "Closing cash & bank balance", "total": d["closing_cash"]},
         ]
         return self.respond(request, d, rows, [("From", start), ("To", end)])
+
+
+class TrialBalanceView(StatementView):
+    title = "Trial Balance"
+    base_name = "trial-balance"
+
+    def get(self, request):
+        start, end = _period(request)
+        d = statements.trial_balance(start, end)
+        rows = []
+        for g in d["groups"]:
+            rows.append({"label": g["label"], "debit": g["debit"] or None, "credit": g["credit"] or None})
+            if request.query_params.get("detailed"):
+                rows += [{"label": INDENT + r["name"], "debit": r["debit"] or None, "credit": r["credit"] or None} for r in g["rows"]]
+        rows.append({"label": "Total", "debit": d["total_debit"], "credit": d["total_credit"]})
+        if request.query_params.get("export"):
+            response = export_response(
+                request, base_name=self.base_name, title=self.title, columns=TB_COLUMNS, rows=rows,
+                meta=[("From", start or "Beginning"), ("To", end)], landscape_mode=False,
+            )
+            if response:
+                return response
+        return ok(d)
+
+
+class OpeningBalancesView(APIView):
+    """GET every opening balance; POST {section: [{id, ...}]} to change them."""
+
+    permission_classes = [RolePermission]
+    permission_map = {"read": "reports.view", "write": "reports.view"}  # each section also checks its own permission
+
+    def get(self, request):
+        return ok(openings.opening_balances(request.user))
+
+    def post(self, request):
+        changed = openings.save_opening_balances(request.data, user=request.user)
+        message = f"{changed} opening balance(s) saved." if changed else "No changes to save."
+        return ok(openings.opening_balances(request.user), message)
