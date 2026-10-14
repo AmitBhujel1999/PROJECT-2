@@ -2,6 +2,7 @@ import django_filters
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 
+from apps.common.bulk import BulkConfig, bulk_save, summary_message
 from apps.common.responses import created, ok
 from apps.users.permissions import RolePermission
 
@@ -29,6 +30,7 @@ class BasePartyViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.
         "partial_update": "parties.manage",
         "activate": "parties.manage",
         "deactivate": "parties.manage",
+        "bulk": "parties.manage",
     }
     filterset_class = PartyFilter
     search_fields = ["name", "phone", "pan_vat_no", "email"]
@@ -71,6 +73,23 @@ class BasePartyViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.
     def activate(self, request, pk=None):
         party = services.set_party_active(self.get_object(), active=True, user=request.user)
         return ok(self.get_serializer(party).data, f"{party.name} activated.")
+
+    @action(detail=False, methods=["post"])
+    def bulk(self, request):
+        """Create/update many parties from the bulk-edit grid: {"rows": [{id?, field: value, ...}]}."""
+        if not self.party_type:
+            return ok(None, "Use the customers or vendors endpoint.", status=400)
+        cfg = BulkConfig(
+            serializer_class=PartySerializer,
+            queryset=self.get_queryset,
+            fields=["name", "pan_vat_no", "phone", "email", "address", "credit_terms", "credit_days", "credit_limit", "notes"],
+            create=lambda data, user: services.create_party(data=data, user=user),
+            update=lambda obj, data, user: services.update_party(obj, data=data, user=user),
+            set_active=lambda obj, active, user: services.set_party_active(obj, active=active, user=user),
+            defaults={"type": self.party_type},
+        )
+        result = bulk_save(cfg, request.data.get("rows"), user=request.user, context=self.get_serializer_context())
+        return ok(result, summary_message(result, PartyType(self.party_type).label.lower()))
 
 
 class PartyViewSet(BasePartyViewSet):

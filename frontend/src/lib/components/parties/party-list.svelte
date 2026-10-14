@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Plus, Pencil, Power } from '@lucide/svelte';
+	import { Plus, Pencil, Power, Sheet } from '@lucide/svelte';
 	import { api } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
@@ -52,6 +52,7 @@
 
 <PageHeader title={side.plural} description="Search by name, phone, PAN/VAT or email.">
 	{#snippet actions()}
+		{#if auth.can('parties.manage')}<Button variant="outline" href="{side.route}/bulk" data-testid="bulk-parties"><Sheet />Bulk update</Button>{/if}
 		{#if auth.can('parties.create')}<Button onclick={() => ((editing = null), (formOpen = true))} data-testid="new-party"><Plus />New {side.label.toLowerCase()}</Button>{/if}
 	{/snippet}
 </PageHeader>

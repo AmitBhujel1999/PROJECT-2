@@ -2,6 +2,7 @@ import django_filters
 from rest_framework import viewsets
 from rest_framework.decorators import action
 
+from apps.common.bulk import BulkConfig, bulk_save, summary_message
 from apps.common.responses import created, ok
 from apps.users.permissions import RolePermission
 
@@ -66,3 +67,18 @@ class ProductViewSet(viewsets.ModelViewSet):
     def activate(self, request, pk=None):
         product = services.set_product_active(self.get_object(), active=True, user=request.user)
         return ok(self.get_serializer(self.get_queryset().get(pk=product.pk)).data, f"{product.name} activated.")
+
+    @action(detail=False, methods=["post"])
+    def bulk(self, request):
+        """Create/update many products from the bulk-edit grid: {"rows": [{id?, field: value, ...}]}."""
+        cfg = BulkConfig(
+            serializer_class=ProductSerializer,
+            queryset=Product.objects.all,
+            fields=["name", "sku_code", "unit", "description", "purchase_price", "selling_price", "tax_rate", "reorder_level"],
+            create=lambda data, user: services.create_product(data=data, user=user),
+            update=lambda obj, data, user: services.update_product(obj, data=data, user=user),
+            set_active=lambda obj, active, user: services.set_product_active(obj, active=active, user=user),
+            unique=["sku_code"],
+        )
+        result = bulk_save(cfg, request.data.get("rows"), user=request.user, context=self.get_serializer_context())
+        return ok(result, summary_message(result, "product"))

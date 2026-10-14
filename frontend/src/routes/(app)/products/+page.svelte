@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Plus, Pencil, Power } from '@lucide/svelte';
+	import { Plus, Pencil, Power, Sheet } from '@lucide/svelte';
 	import { api } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
@@ -53,6 +53,7 @@
 <PageHeader title="Products" description="Items you buy and sell. Products with history are deactivated, never deleted.">
 	{#snippet actions()}
 		{#if canManage}
+			<Button variant="outline" href="/products/bulk" data-testid="bulk-products"><Sheet />Bulk update</Button>
 			<Button onclick={() => ((editing = null), (formOpen = true))} data-testid="new-product"><Plus />New product</Button>
 		{/if}
 	{/snippet}
