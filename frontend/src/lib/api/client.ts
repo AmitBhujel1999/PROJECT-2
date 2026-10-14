@@ -103,7 +103,31 @@ export async function request<T>(
 	return payload as Envelope<T>;
 }
 
+/** POST a file (multipart form). Same envelope and errors as ``request``. */
+async function upload<T>(path: string, form: FormData): Promise<Envelope<T>> {
+	await ensureCsrf();
+	let response: Response;
+	try {
+		response = await fetch(buildUrl(path), {
+			method: 'POST',
+			headers: { Accept: 'application/json', 'X-CSRFToken': readCookie(CSRF_COOKIE) ?? '' },
+			credentials: 'same-origin',
+			body: form
+		});
+	} catch {
+		throw new ApiError(0, 'NETWORK_ERROR', 'Cannot reach the server. Check your connection and try again.');
+	}
+	const payload: any = await response.json().catch(() => null);
+	if (!response.ok || !payload?.success) {
+		const error = payload?.error ?? {};
+		if (response.status === 401 && unauthorizedHandler) unauthorizedHandler();
+		throw new ApiError(response.status, error.code ?? 'ERROR', error.message ?? `Request failed (${response.status}).`, error.details);
+	}
+	return payload as Envelope<T>;
+}
+
 export const api = {
+	upload,
 	get: <T>(path: string, query?: Query, signal?: AbortSignal) =>
 		request<T>('GET', path, { query, signal }).then((r) => r.data),
 	post: <T>(path: string, body?: unknown) => request<T>('POST', path, { body: body ?? {} }),

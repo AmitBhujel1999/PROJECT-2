@@ -18,4 +18,4 @@
 
 <PageHeader title="Edit Many Items" description="Change prices and details of many items at once, or add new items from Excel." back={{ href: '/products', label: 'Products' }} />
 
-<BulkGrid path="products" {columns} noun="item" />
+<BulkGrid path="products" {columns} noun="item" matchKey="sku_code" />

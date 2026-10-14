@@ -3,6 +3,7 @@ from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 
 from apps.common.bulk import BulkConfig, bulk_save, summary_message
+from apps.common import sheets
 from apps.common.responses import created, ok
 from apps.users.permissions import RolePermission
 
@@ -31,6 +32,8 @@ class BasePartyViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.
         "activate": "parties.manage",
         "deactivate": "parties.manage",
         "bulk": "parties.manage",
+        "bulk_template": "parties.view",
+        "bulk_upload": "parties.manage",
     }
     filterset_class = PartyFilter
     search_fields = ["name", "phone", "pan_vat_no", "email"]
@@ -90,6 +93,17 @@ class BasePartyViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.
         )
         result = bulk_save(cfg, request.data.get("rows"), user=request.user, context=self.get_serializer_context())
         return ok(result, summary_message(result, PartyType(self.party_type).label.lower()))
+
+    @action(detail=False, methods=["get"], url_path="bulk/template")
+    def bulk_template(self, request):
+        """Excel format file for uploading customers or vendors."""
+        return sheets.template_response(sheets.parties_format(self.party_type or PartyType.CUSTOMER))
+
+    @action(detail=False, methods=["post"], url_path="bulk/upload")
+    def bulk_upload(self, request):
+        """Read an uploaded Excel/CSV file into rows for the grid (nothing is saved)."""
+        data = sheets.parse_upload(sheets.parties_format(self.party_type or PartyType.CUSTOMER), request.FILES.get("file"))
+        return ok(data, f"Read {len(data['rows'])} row(s) from the file.")
 
 
 class PartyViewSet(BasePartyViewSet):

@@ -12,9 +12,9 @@
 </script>
 
 <script lang="ts">
-	import { Clipboard, ClipboardCheck, Plus, Save, Trash2, CircleAlert } from '@lucide/svelte';
+	import { Clipboard, ClipboardCheck, Plus, Save, Trash2, CircleAlert, FileDown, FileUp } from '@lucide/svelte';
 	import { beforeNavigate } from '$app/navigation';
-	import { api, ApiError } from '$lib/api/client';
+	import { api, ApiError, buildUrl } from '$lib/api/client';
 	import { toast } from '$lib/stores/toast.svelte';
 	import type { Paginated } from '$lib/types';
 	import Button from '$lib/components/ui/button.svelte';
@@ -25,12 +25,15 @@
 	let {
 		path,
 		columns,
-		noun
+		noun,
+		matchKey = 'name'
 	}: {
 		/** API collection, e.g. "products" (lists from it, saves to <path>/bulk/). */
 		path: string;
 		columns: BulkColumn[];
 		noun: string;
+		/** Column that finds a record already in the app when a file is uploaded (e.g. item code). */
+		matchKey?: string;
 	} = $props();
 
 	type Values = Record<string, string | boolean>;
@@ -166,6 +169,59 @@
 		}
 	}
 
+	// ------------------------------------------------------- Excel file
+	let fileInput = $state<HTMLInputElement | null>(null);
+	let uploading = $state(false);
+
+	async function onFile(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		input.value = '';
+		if (!file) return;
+		uploading = true;
+		try {
+			const form = new FormData();
+			form.append('file', file);
+			const res = await api.upload<{ rows: Record<string, string>[]; skipped_examples: number }>(`${path}/bulk/upload/`, form);
+			applyUpload(res.data.rows, res.data.skipped_examples);
+		} catch (err) {
+			toast.error(err instanceof ApiError ? err.message : 'Could not read the file.');
+		} finally {
+			uploading = false;
+		}
+	}
+
+	function applyUpload(uploaded: Record<string, string>[], skipped: number) {
+		const key = (v: unknown) => String(v ?? '').trim().toLowerCase();
+		const byMatch = new Map(rows.filter((r) => r.id !== null).map((r) => [key(r.values[matchKey]), r]));
+		let added = 0;
+		let matched = 0;
+		for (const u of uploaded) {
+			let row = u[matchKey] ? byMatch.get(key(u[matchKey])) : undefined;
+			const isNew = !row;
+			if (row) matched++;
+			else {
+				row = rows.find(isBlank);
+				if (!row) {
+					rows.push(blank());
+					row = rows[rows.length - 1];
+				}
+				added++;
+			}
+			for (const [k, v] of Object.entries(u)) {
+				const c = ALL_COLUMNS.find((col) => col.key === k);
+				// An empty cell never wipes out what an existing record already has.
+				if (c && (isNew || v !== '')) row.values[k] = v === '' && c.kind === 'bool' ? true : normalise(c, v);
+			}
+			if (u[matchKey]) byMatch.set(key(u[matchKey]), row);
+		}
+		if (!rows.slice(-1).some(isBlank)) rows.push(blank());
+		search = '';
+		show = 'all';
+		const parts = [added && `${added} new`, matched && `${matched} already in the app`].filter(Boolean).join(', ');
+		toast.success(`Loaded ${uploaded.length} ${uploaded.length === 1 ? 'row' : 'rows'} from the file (${parts}).${skipped ? ' Example rows were skipped.' : ''} Check them, then press Save.`);
+	}
+
 	// ----------------------------------------------------------- keyboard
 	function onKey(e: KeyboardEvent, rowIndex: number, colIndex: number) {
 		const move = e.key === 'Enter' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
@@ -261,13 +317,16 @@
 				options={[{ value: 'active', label: 'In use' }, { value: 'inactive', label: 'Not in use' }, { value: 'all', label: 'Show all' }]} />
 		</div>
 		<div class="flex flex-wrap gap-2">
+			<Button variant="outline" size="sm" href={buildUrl(`${path}/bulk/template/`)} download data-testid="bulk-format"><FileDown />Download format</Button>
+			<Button variant="outline" size="sm" onclick={() => fileInput?.click()} loading={uploading} data-testid="bulk-upload"><FileUp />Upload Excel</Button>
+			<input bind:this={fileInput} type="file" accept=".xlsx,.csv,.xls" class="hidden" onchange={onFile} data-testid="bulk-file" />
 			<Button variant="outline" size="sm" onclick={copyAll} data-testid="bulk-copy">{#if copied}<ClipboardCheck />{:else}<Clipboard />{/if}Copy to Excel</Button>
 			<Button variant="outline" size="sm" onclick={() => rows.push(blank(), blank(), blank(), blank(), blank())}><Plus />More rows</Button>
 			<Button size="sm" onclick={save} loading={busy} disabled={!pending.length} data-testid="bulk-save"><Save />{pending.length ? `Save ${pending.length} ${pending.length === 1 ? 'change' : 'changes'}` : 'Save'}</Button>
 		</div>
 	</div>
 	<p class="border-t px-3 py-2 text-xs text-muted-foreground">
-		Type in the boxes, or copy rows from Excel and paste them here (Ctrl+V). New {noun}s go in the empty rows at the bottom. Press Save when done.
+		Type in the boxes, paste rows copied from Excel (Ctrl+V), or fill our Excel format and upload it. Press Save when done; nothing is saved before that.
 	</p>
 </Card>
 
