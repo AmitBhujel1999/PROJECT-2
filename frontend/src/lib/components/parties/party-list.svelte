@@ -52,7 +52,7 @@
 
 <PageHeader title={side.plural} description="Search by name, phone, PAN/VAT or email.">
 	{#snippet actions()}
-		{#if auth.can('parties.manage')}<Button variant="outline" href="{side.route}/bulk" data-testid="bulk-parties"><Sheet />Bulk update</Button>{/if}
+		{#if auth.can('parties.manage')}<Button variant="outline" href="{side.route}/bulk" data-testid="bulk-parties"><Sheet />Edit many</Button>{/if}
 		{#if auth.can('parties.create')}<Button onclick={() => ((editing = null), (formOpen = true))} data-testid="new-party"><Plus />New {side.label.toLowerCase()}</Button>{/if}
 	{/snippet}
 </PageHeader>

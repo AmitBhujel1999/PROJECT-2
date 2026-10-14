@@ -14,14 +14,14 @@
 		{ key: 'email', label: 'Email', width: 'w-48' },
 		{ key: 'pan_vat_no', label: 'PAN/VAT No.', width: 'w-32' },
 		{ key: 'address', label: 'Address', width: 'min-w-48' },
-		{ key: 'credit_terms', label: 'Credit terms', kind: 'select', options: CREDIT_TERMS, width: 'w-28' },
-		{ key: 'credit_days', label: 'Days', kind: 'number', width: 'w-16' },
-		...(type === 'CUSTOMER' ? [{ key: 'credit_limit', label: 'Credit limit', kind: 'number' as const, width: 'w-28' }] : [])
+		{ key: 'credit_terms', label: 'Pays within', kind: 'select', options: CREDIT_TERMS, width: 'w-28' },
+		{ key: 'credit_days', label: 'Days (if Custom)', kind: 'number', width: 'w-24' },
+		...(type === 'CUSTOMER' ? [{ key: 'credit_limit', label: 'Max credit (0 = no limit)', kind: 'number' as const, width: 'w-28' }] : [])
 	]);
 </script>
 
-<svelte:head><title>Bulk Update {side.plural} · Accounting</title></svelte:head>
+<svelte:head><title>Edit Many {side.plural} · Accounting</title></svelte:head>
 
-<PageHeader title="Bulk Update {side.plural}" description="Edit many {side.plural.toLowerCase()} at once, or paste a list from Excel. Days apply only to Custom credit terms. Opening balances are set in Opening Balances." back={{ href: side.route, label: side.plural }} />
+<PageHeader title="Edit Many {side.plural}" description="Change details of many {side.plural.toLowerCase()} at once, or add new ones from Excel." back={{ href: side.route, label: side.plural }} />
 
 {#key type}<BulkGrid path={side.api} {columns} noun={side.label.toLowerCase()} />{/key}

@@ -16,6 +16,7 @@ def test_bulk_products_create_and_update(api, product_factory):
     r = api.post("/api/products/bulk/", {"rows": rows}, format="json")
     assert r.status_code == 200, r.content
     assert r.json()["data"] == {"created": 2, "updated": 1}
+    assert r.json()["message"] == "Saved: 2 new items added, 1 item changed."
     p.refresh_from_db()
     assert p.selling_price == D("130.00") and p.tax_rate == D("0")
     assert Product.objects.get(sku_code="DAL-1").selling_price == D("165")

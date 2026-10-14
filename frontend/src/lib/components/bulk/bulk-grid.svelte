@@ -51,7 +51,7 @@
 	let copied = $state(false);
 	let nextKey = 0;
 
-	const ALL_COLUMNS = $derived<BulkColumn[]>([...columns, { key: 'is_active', label: 'Active', kind: 'bool', width: 'w-16' }]);
+	const ALL_COLUMNS = $derived<BulkColumn[]>([...columns, { key: 'is_active', label: 'In use', kind: 'bool', width: 'w-16' }]);
 
 	function fromApi(item: Record<string, unknown>): Values {
 		const v: Values = {};
@@ -127,6 +127,10 @@
 		if (!/[\t\n]/.test(text.replace(/\r?\n$/, ''))) return; // a single value: let the input handle it
 		e.preventDefault();
 		const lines = text.replace(/\r/g, '').replace(/\n$/, '').split('\n').map((l) => l.split('\t'));
+		// Skip a heading line (e.g. one copied with "Copy to Excel").
+		const labels = ALL_COLUMNS.slice(colIndex).map((c) => c.label.toLowerCase());
+		if (lines[0].every((cell, j) => cell.trim().toLowerCase() === labels[j])) lines.shift();
+		if (!lines.length) return;
 		const target = [...visible];
 		lines.forEach((cells, i) => {
 			let row = target[rowIndex + i];
@@ -142,7 +146,7 @@
 			});
 		});
 		if (!rows.slice(-1).some(isBlank)) rows.push(blank());
-		toast.success(`Pasted ${lines.length} row(s). Check them, then save.`);
+		toast.success(`Pasted ${lines.length} ${lines.length === 1 ? 'row' : 'rows'}. Check them, then press Save.`);
 	}
 
 	async function copyAll() {
@@ -156,9 +160,9 @@
 			await navigator.clipboard.writeText(tsv);
 			copied = true;
 			setTimeout(() => (copied = false), 1500);
-			toast.success('Copied. Paste into Excel or Google Sheets.');
+			toast.success('Copied. Now paste it in Excel or Google Sheets.');
 		} catch {
-			toast.error('The browser blocked copying.');
+			toast.error('Could not copy. Your browser did not allow it.');
 		}
 	}
 
@@ -184,8 +188,8 @@
 		for (const r of pending.filter((r) => r.id === null)) {
 			const missing = columns.filter((c) => c.required && !String(r.values[c.key]).trim());
 			if (missing.length) {
-				errors = { [r.key]: Object.fromEntries(missing.map((c) => [c.key, `${c.label} is required.`])) };
-				toast.error(`A new row is missing ${missing.map((c) => c.label).join(', ')}.`);
+				errors = { [r.key]: Object.fromEntries(missing.map((c) => [c.key, 'Please fill this in.'])) };
+				toast.error(`Please fill in ${missing.map((c) => c.label).join(', ')} for the new row.`);
 				return;
 			}
 		}
@@ -206,7 +210,7 @@
 				const byIndex = ((err.details as { rows?: Record<string, Record<string, string>> })?.rows ?? {}) as Record<string, Record<string, string>>;
 				errors = Object.fromEntries(Object.entries(byIndex).map(([i, e]) => [sent[Number(i)].key, e]));
 			}
-			toast.error(err instanceof ApiError ? err.message : 'Could not save.');
+			toast.error(err instanceof ApiError ? err.message : 'Could not save. Please try again.');
 		} finally {
 			busy = false;
 		}
@@ -217,10 +221,34 @@
 	}
 
 	beforeNavigate((nav) => {
-		if (pending.length && !busy && !confirm('You have unsaved changes. Leave without saving?')) nav.cancel();
+		if (pending.length && !busy && !confirm('Your changes are not saved yet. Leave this page anyway?')) nav.cancel();
 	});
 
-	const errorCount = $derived(Object.keys(errors).length);
+	/** Server messages in everyday words. */
+	function plain(msg: string): string {
+		if (/valid number/i.test(msg)) return 'Enter a number.';
+		if (/may not be blank|is required/i.test(msg)) return 'Please fill this in.';
+		if (/greater than or equal to 0/i.test(msg)) return 'Cannot be less than 0.';
+		if (/less than or equal to 100/i.test(msg)) return 'Cannot be more than 100.';
+		if (/not a valid choice/i.test(msg)) return 'Pick one from the list.';
+		if (/already exists/i.test(msg)) return 'Already used by another one.';
+		if (/valid email/i.test(msg)) return 'This email address does not look right.';
+		const long = msg.match(/no more than (\d+) characters/i);
+		if (long) return `Too long (at most ${long[1]} letters).`;
+		return msg;
+	}
+
+	const problems = $derived(
+		rows
+			.filter((r) => errors[r.key])
+			.flatMap((r) =>
+				Object.entries(errors[r.key]).map(([field, msg]) => {
+					const col = ALL_COLUMNS.find((c) => c.key === field);
+					const who = String(r.values.name ?? '').trim() || 'New row';
+					return `${who}${col ? ` – ${col.label}` : ''}: ${plain(msg)}`;
+				})
+			)
+	);
 </script>
 
 <svelte:window onkeydown={onWindowKey} />
@@ -228,26 +256,29 @@
 <Card bodyClass="p-0" class="mb-3">
 	<div class="flex flex-wrap items-center justify-between gap-2 p-3">
 		<div class="flex flex-wrap items-center gap-2">
-			<input class="h-8 w-56 rounded-md border border-input bg-background px-2.5 text-sm" placeholder="Search…" bind:value={search} aria-label="Search" />
+			<input class="h-8 w-56 rounded-md border border-input bg-background px-2.5 text-sm" placeholder="Find by name…" bind:value={search} aria-label="Find" />
 			<Select bind:value={show} class="h-8 w-32" aria-label="Show"
-				options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }, { value: 'all', label: 'All' }]} />
+				options={[{ value: 'active', label: 'In use' }, { value: 'inactive', label: 'Not in use' }, { value: 'all', label: 'Show all' }]} />
 		</div>
 		<div class="flex flex-wrap gap-2">
-			<Button variant="outline" size="sm" onclick={copyAll} data-testid="bulk-copy">{#if copied}<ClipboardCheck />{:else}<Clipboard />{/if}Copy all</Button>
-			<Button variant="outline" size="sm" onclick={() => rows.push(blank(), blank(), blank(), blank(), blank())}><Plus />Add 5 rows</Button>
-			<Button size="sm" onclick={save} loading={busy} disabled={!pending.length} data-testid="bulk-save"><Save />Save{pending.length ? ` (${pending.length})` : ''}</Button>
+			<Button variant="outline" size="sm" onclick={copyAll} data-testid="bulk-copy">{#if copied}<ClipboardCheck />{:else}<Clipboard />{/if}Copy to Excel</Button>
+			<Button variant="outline" size="sm" onclick={() => rows.push(blank(), blank(), blank(), blank(), blank())}><Plus />More rows</Button>
+			<Button size="sm" onclick={save} loading={busy} disabled={!pending.length} data-testid="bulk-save"><Save />{pending.length ? `Save ${pending.length} ${pending.length === 1 ? 'change' : 'changes'}` : 'Save'}</Button>
 		</div>
 	</div>
 	<p class="border-t px-3 py-2 text-xs text-muted-foreground">
-		Copy cells from Excel or Google Sheets and paste (Ctrl+V) into any cell: values fill across and down, and extra lines become new {noun}s.
-		Enter moves down. Ctrl+S saves. Nothing is saved until you press Save; if any row is wrong, nothing is saved.
+		Type in the boxes, or copy rows from Excel and paste them here (Ctrl+V). New {noun}s go in the empty rows at the bottom. Press Save when done.
 	</p>
 </Card>
 
-{#if errorCount}
+{#if problems.length}
 	<p class="mb-3 flex items-center gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
-		<CircleAlert class="size-4" />{errorCount} row(s) need fixing. Hover a red cell to see why.
+		<CircleAlert class="size-4 shrink-0" />Nothing was saved. Please fix {problems.length === 1 ? 'this' : 'these'} first:
 	</p>
+	<ul class="-mt-3 mb-3 list-disc rounded-b-md border border-t-0 border-red-300 bg-red-50 py-2 pl-9 pr-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200" data-testid="bulk-problems">
+		{#each problems.slice(0, 10) as p, i (i)}<li>{p}</li>{/each}
+		{#if problems.length > 10}<li>…and {problems.length - 10} more, marked in red below.</li>{/if}
+	</ul>
 {/if}
 
 <Card bodyClass="p-0">
@@ -278,7 +309,7 @@
 										<input type="checkbox" class="mx-auto block size-4" bind:checked={r.values[c.key] as boolean} data-cell="{ri}-{ci}"
 											onpaste={(e) => onPaste(e, ri, ci)} aria-label="{c.label} row {ri + 1}" />
 									{:else if c.kind === 'select'}
-										<select bind:value={r.values[c.key]} data-cell="{ri}-{ci}" title={err ?? ''} onpaste={(e) => onPaste(e, ri, ci)}
+										<select bind:value={r.values[c.key]} data-cell="{ri}-{ci}" title={err ? plain(err) : ''} onpaste={(e) => onPaste(e, ri, ci)}
 											class={cn('h-8 w-full rounded border border-transparent bg-transparent px-1.5 hover:border-input focus:border-ring focus:outline-none', changed.includes(c.key) && 'font-semibold', err && 'border-red-500')}
 											aria-label="{c.label} row {ri + 1}">
 											{#each c.options ?? [] as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
@@ -289,7 +320,7 @@
 											inputmode={c.kind === 'number' ? 'decimal' : undefined}
 											bind:value={r.values[c.key]}
 											data-cell="{ri}-{ci}"
-											title={err ?? ''}
+											title={err ? plain(err) : ''}
 											onpaste={(e) => onPaste(e, ri, ci)}
 											onkeydown={(e) => onKey(e, ri, ci)}
 											class={cn(
@@ -314,8 +345,8 @@
 			</table>
 		</div>
 		<p class="border-t px-3 py-2 text-xs text-muted-foreground">
-			<span class="mr-3 inline-block size-3 rounded-sm bg-amber-100 align-middle"></span>changed
-			<span class="ml-4 mr-3 inline-block size-3 rounded-sm bg-emerald-100 align-middle"></span>new
+			<span class="mr-1.5 inline-block size-3 rounded-sm bg-amber-100 align-middle"></span>edited, not saved yet
+			<span class="ml-4 mr-1.5 inline-block size-3 rounded-sm bg-emerald-100 align-middle"></span>new, not saved yet
 		</p>
 	{/if}
 </Card>

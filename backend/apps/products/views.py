@@ -81,4 +81,4 @@ class ProductViewSet(viewsets.ModelViewSet):
             unique=["sku_code"],
         )
         result = bulk_save(cfg, request.data.get("rows"), user=request.user, context=self.get_serializer_context())
-        return ok(result, summary_message(result, "product"))
+        return ok(result, summary_message(result, "item"))

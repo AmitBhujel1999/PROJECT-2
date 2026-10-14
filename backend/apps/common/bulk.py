@@ -52,13 +52,13 @@ def bulk_save(cfg: BulkConfig, rows, *, user, context=None) -> dict:
 
     for i, row in enumerate(rows):
         if not isinstance(row, dict):
-            errors[i] = {"row": "Invalid row."}
+            errors[i] = {"row": "This row could not be read."}
             continue
         obj = None
         if row.get("id"):
             obj = existing.get(row["id"])
             if obj is None:
-                errors[i] = {"row": "This record no longer exists."}
+                errors[i] = {"row": "This one was deleted by someone else. Reload the page."}
                 continue
         data = {k: row[k] for k in cfg.fields if k in row}
         active = row.get("is_active")
@@ -74,7 +74,7 @@ def bulk_save(cfg: BulkConfig, rows, *, user, context=None) -> dict:
             if not value:
                 continue
             if value in seen[name]:
-                errors[i] = {name: f"Same as row {seen[name][value] + 1}."}
+                errors[i] = {name: "Used twice in this list."}
             else:
                 seen[name][value] = i
         if obj is not None:
@@ -83,7 +83,7 @@ def bulk_save(cfg: BulkConfig, rows, *, user, context=None) -> dict:
 
     if errors:
         raise BusinessError(
-            f"{len(errors)} row(s) have errors; nothing was saved.",
+            "Some rows have problems. Nothing was saved.",
             code="BULK_INVALID",
             details={"rows": {str(k): v for k, v in errors.items()}},
         )
@@ -111,7 +111,9 @@ def bulk_save(cfg: BulkConfig, rows, *, user, context=None) -> dict:
 def summary_message(result: dict, noun: str) -> str:
     parts = []
     if result["created"]:
-        parts.append(f"{result['created']} {noun}(s) created")
+        n = result["created"]
+        parts.append(f"{n} new {noun}{'' if n == 1 else 's'} added")
     if result["updated"]:
-        parts.append(f"{result['updated']} updated")
-    return (", ".join(parts) + ".") if parts else "No changes to save."
+        n = result["updated"]
+        parts.append(f"{n} {noun}{'' if n == 1 else 's'} changed")
+    return ("Saved: " + ", ".join(parts) + ".") if parts else "Nothing changed."
