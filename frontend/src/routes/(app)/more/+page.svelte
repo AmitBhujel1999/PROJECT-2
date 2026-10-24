@@ -83,7 +83,7 @@
 			{#if !cloudMode}
 				<li>
 					<button type="button" class="w-full px-3 py-2.5 text-left text-sm" onclick={useAnywhere} disabled={linking}>
-						{linking ? 'Linking…' : 'Use this phone anywhere'}<span class="block text-[11px] text-muted-foreground">See your books away from the shop Wi-Fi (online copy)</span>
+						{linking ? 'Linking…' : 'Use this phone anywhere'}<span class="block text-[11px] text-muted-foreground">See your books away from the shop Wi-Fi at mero-lekhapal.web.app</span>
 					</button>
 				</li>
 			{/if}
