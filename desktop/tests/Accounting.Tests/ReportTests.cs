@@ -55,6 +55,26 @@ public class ReportTests : IDisposable
     }
 
     [Fact]
+    public void ProductProfitUsesWeightedAverageCost()
+    {
+        // Received: opening 1,000 @ 50 + 10 @ 45 (10% discount) + 10 @ 50 = 50,950 for 1,020 units.
+        // Sold: 6 units for 550.00 excl. VAT -> cost 6 x 49.95098 = 299.71, profit 250.29, margin 45.51%.
+        var row = Assert.Single(_t.Read(tx => BusinessReports.ProductProfit(tx, null, D(2026, 12, 31))));
+        Assert.Equal((6m, 550.00m, 299.71m, 250.29m, 45.51m), (row.QuantitySold, row.Sales, row.CostOfSales, row.Profit, row.MarginPercent));
+        Assert.Equal(49.95m, row.AverageCost);
+
+        // Only sales in the period; cost as of the period end.
+        var sept = Assert.Single(_t.Read(tx => BusinessReports.ProductProfit(tx, D(2026, 9, 1), D(2026, 9, 30))));
+        Assert.Equal(4m, sept.QuantitySold);
+        Assert.Empty(_t.Read(tx => BusinessReports.ProductProfit(tx, D(2026, 9, 1), D(2026, 9, 30), "no such item")));
+
+        // A cancelled sale no longer counts.
+        var first = _t.Read(tx => BusinessReports.TradeRows(tx, TradeKind.Sale, new TradeFilter())).Results.Last().Document;
+        _t.Write(tx => TradeService.Cancel(tx, _t.Admin, TradeKind.Sale, first.Id, "Mistake"));
+        Assert.Equal(4m, Assert.Single(_t.Read(tx => BusinessReports.ProductProfit(tx, null, D(2026, 12, 31)))).QuantitySold);
+    }
+
+    [Fact]
     public void CancelledDocumentsOnlyWhenAskedFor()
     {
         var first = _t.Read(tx => BusinessReports.TradeRows(tx, TradeKind.Sale, new TradeFilter())).Results.Last().Document;

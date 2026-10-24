@@ -38,6 +38,53 @@ public static class ReportsApi
         .. end is { } e ? new[] { ("To", Date(a, e)) } : [],
     ];
 
+    private static readonly Dictionary<string, Func<ProductProfitRow, object>> ProfitOrder = new()
+    {
+        ["name"] = r => r.Name, ["sku_code"] = r => r.SkuCode, ["quantity"] = r => r.QuantitySold, ["sales"] = r => r.Sales,
+        ["cost"] = r => r.CostOfSales, ["profit"] = r => r.Profit, ["margin"] = r => r.MarginPercent ?? decimal.MinValue,
+    };
+
+    /// <summary>Product profitability for the request: period (default: this fiscal year to date), search, sort.</summary>
+    private static (List<ProductProfitRow> Rows, DateOnly Start, DateOnly End) ProductProfit(Api a)
+    {
+        var end = a.Date("end_date") ?? a.Db.Today();
+        var (y, m, _) = NepaliDate.FromAd(end);
+        var start = a.Date("start_date") ?? NepaliDate.ToAd(m >= 4 ? y : y - 1, 4, 1);
+        if (start > end)
+            throw new ValidationError("start_date", "Start date must be on or before the end date.");
+        var rows = a.Read(tx => BusinessReports.ProductProfit(tx, start, end, a.Q("search")));
+        var ordering = a.Q("ordering") ?? "-profit";
+        var key = ordering.TrimStart('-');
+        if (ProfitOrder.TryGetValue(key, out var by))
+            rows = (ordering.StartsWith('-') ? rows.OrderByDescending(by) : rows.OrderBy(by)).ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        return (rows, start, end);
+    }
+
+    private static (decimal Sales, decimal Cost, decimal Profit, decimal? Margin) ProfitTotals(List<ProductProfitRow> rows)
+    {
+        var sales = rows.Sum(r => r.Sales);
+        var cost = rows.Sum(r => r.CostOfSales);
+        return (sales, cost, sales - cost, sales == 0 ? null : Math.Round((sales - cost) * 100m / sales, 2, MidpointRounding.AwayFromZero));
+    }
+
+    public static ReportTable ProductProfitTable(Api a)
+    {
+        var (rows, start, end) = ProductProfit(a);
+        var t = ProfitTotals(rows);
+        var table = new ReportTable
+        {
+            Title = "Product Profitability",
+            Meta = [("From", Date(a, start)), ("To", Date(a, end)), ("Cost", "Weighted average purchase cost")],
+            Columns = [new("SKU"), new("Item", Width: 2.2), new("Unit", Width: 0.6), new("Qty Sold", true), new("Sales (excl. VAT)", true),
+                new("Avg Cost", true), new("Cost of Sales", true), new("Gross Profit", true), new("Margin %", true)],
+            Totals = ["", "TOTAL", "", "", F(t.Sales), "", F(t.Cost), F(t.Profit), t.Margin is { } mt ? $"{mt:0.00}" : ""],
+        };
+        foreach (var r in rows)
+            table.Add(r.SkuCode, r.Name, r.Unit, Format.Qty(r.QuantitySold), F(r.Sales), F(r.AverageCost), F(r.CostOfSales), F(r.Profit),
+                r.MarginPercent is { } mp ? $"{mp:0.00}" : "");
+        return table;
+    }
+
     public static ReportTable StockTable(Api a)
     {
         var filter = InventoryApi.RegisterFilter(a);
@@ -273,6 +320,32 @@ public static class ReportsApi
                         category_id = c.CategoryId, category_name = c.CategoryName, count = c.Count, amount = Json.M(c.Amount), tax_amount = Json.M(c.TaxAmount),
                         total_amount = Json.M(c.TotalAmount), journal_amount = Json.M(c.JournalAmount), total_with_journal = Json.M(c.TotalWithJournal),
                     }).ToList(),
+                },
+            });
+        });
+
+        api.MapGet("reports/product-profit", (HttpContext h) =>
+        {
+            var a = Api.Of(h);
+            a.Require("reports.view");
+            if (a.Q("export") is { } kind)
+                return Export(a, kind, ProductProfitTable(a));
+            var (rows, start, end) = ProductProfit(a);
+            var t = ProfitTotals(rows);
+            var page = a.Page;
+            var results = rows.Skip(page.Offset).Take(page.Size).ToList();
+            return Api.Paged(new Page<ProductProfitRow>(results, rows.Count, page.Page, page.Size), r => new
+            {
+                id = r.ProductId, sku_code = r.SkuCode, name = r.Name, unit = r.Unit, quantity = Json.Q(r.QuantitySold), sales = Json.M(r.Sales),
+                average_cost = Json.M(r.AverageCost), cost = Json.M(r.CostOfSales), profit = Json.M(r.Profit),
+                margin = r.MarginPercent is { } mp ? Json.R(mp) : null,
+            }, new Dictionary<string, object?>
+            {
+                ["summary"] = new
+                {
+                    products = rows.Count, sales = Json.M(t.Sales), cost = Json.M(t.Cost), profit = Json.M(t.Profit),
+                    margin = t.Margin is { } mt ? Json.R(mt) : null, loss_making = rows.Count(r => r.Profit < 0),
+                    start_date = Json.D(start), end_date = Json.D(end),
                 },
             });
         });

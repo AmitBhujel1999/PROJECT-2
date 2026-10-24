@@ -42,6 +42,7 @@
 		{ href: '/reports/purchases', label: 'Purchases', perm: 'reports.view' },
 		{ href: '/reports/expenses', label: 'Expenses', perm: 'reports.view' },
 		{ href: '/reports/stock', label: 'Stock', perm: 'inventory.view' },
+		{ href: '/reports/product-profit', label: 'Product Profit', perm: 'reports.view' },
 		{ href: '/reports/receivables', label: 'Receivables', perm: 'reports.view' },
 		{ href: '/reports/payables', label: 'Payables', perm: 'reports.view' }
 	];

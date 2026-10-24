@@ -105,6 +105,27 @@ public static class Statements
         return Money.Round(total);
     }
 
+    /// <summary>
+    /// Weighted average cost per unit of every product at the end of <paramref name="asOf"/>: the cost of all
+    /// units received so far (opening stock and purchases) over their number, as the stock value uses.
+    /// Products never received fall back to their purchase price.
+    /// </summary>
+    public static Dictionary<long, decimal> AverageCosts(Tx tx, DateOnly asOf) =>
+        tx.Rows(
+            $"""
+             SELECT p.id, p.purchase_price,
+                    COALESCE(SUM(CASE WHEN m.transaction_type IN ('OPENING_STOCK', 'PURCHASE') THEN m.quantity_in - m.quantity_out END), 0) AS received,
+                    COALESCE(SUM(CASE WHEN m.transaction_type IN ('OPENING_STOCK', 'PURCHASE') THEN (m.quantity_in - m.quantity_out) * m.unit_cost END), 0) AS received_cost
+             FROM products p LEFT JOIN {LiveMovements} m ON m.product_id = p.id AND m.date <= @asOf
+             GROUP BY p.id
+             """, new { asOf })
+            .ToDictionary(r => r.Long("id"), r =>
+            {
+                var units = r.Qty("received");
+                // received_cost is thousandths x paisa.
+                return units > 0 ? r.Long("received_cost") / 100_000m / units : r.Money("purchase_price");
+            });
+
     /// <summary>Cost of all opening-stock movements up to <paramref name="end"/> (goods brought in at the start).</summary>
     public static decimal OpeningStockValue(Tx tx, DateOnly end) =>
         Money.Round(tx.Scalar<long>(

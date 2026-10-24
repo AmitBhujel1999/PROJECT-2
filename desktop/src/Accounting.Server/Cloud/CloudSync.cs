@@ -456,6 +456,7 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
             new("journal/ledgers/", all, "journal.view"),
             new("journal/ledgers/groups/", "", "journal.view"),
             new("reports/stock/", all, "inventory.view"),
+            new("reports/product-profit/", $"{period}&{all}", "reports.view"),
             new("reports/sales/", all, "reports.view"),
             new("reports/purchases/", all, "reports.view"),
             new("reports/expenses/", all, "reports.view"),

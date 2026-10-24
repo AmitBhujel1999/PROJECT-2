@@ -212,6 +212,7 @@ export const MENUS: TopMenu[] = [
 			{ label: 'Purchase Report', href: '/reports/purchases', perm: 'reports.view' },
 			{ label: 'Expense Report', href: '/reports/expenses', perm: 'reports.view' },
 			{ label: 'Stock Report', href: '/reports/stock', perm: 'inventory.view' },
+			{ label: 'Product Profitability', href: '/reports/product-profit', perm: 'reports.view' },
 			'separator',
 			{ label: 'Receivables Report', href: '/reports/receivables', perm: 'reports.view' },
 			{ label: 'Payables Report', href: '/reports/payables', perm: 'reports.view' }

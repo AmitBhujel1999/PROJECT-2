@@ -4,6 +4,7 @@ using Accounting.Core.Expenses;
 using Accounting.Core.Inventory;
 using Accounting.Core.Journal;
 using Accounting.Core.Payments;
+using Accounting.Core.Products;
 using Accounting.Core.Trade;
 
 namespace Accounting.Core.Reports;
@@ -48,8 +49,48 @@ public sealed record DashboardData(
     IReadOnlyList<StockRegisterRow> StockValueByProduct, IReadOnlyList<StockRegisterRow> LowStock, IReadOnlyList<TradeDocument> RecentSales);
 
 /// <summary>Sales, purchase, expense and outstanding reports and the dashboard, ported from backend/apps/reports/views.py.</summary>
+/// <summary>One product's sales in a period and what they cost (weighted average cost, as in the P&amp;L).</summary>
+public sealed record ProductProfitRow(
+    long ProductId, string SkuCode, string Name, string Unit, decimal QuantitySold, decimal Sales, decimal AverageCost,
+    decimal CostOfSales, decimal Profit)
+{
+    /// <summary>Gross profit as a percentage of sales; null when nothing was charged.</summary>
+    public decimal? MarginPercent => Sales == 0 ? null : Math.Round(Profit * 100m / Sales, 2, MidpointRounding.AwayFromZero);
+}
+
 public static class BusinessReports
 {
+    // ------------------------------------------------------------------ product profitability
+
+    /// <summary>
+    /// Products sold in the period (active sales only): quantity, sales excluding VAT and after all discounts,
+    /// cost of those units at weighted average cost up to <paramref name="end"/>, gross profit and margin.
+    /// </summary>
+    public static List<ProductProfitRow> ProductProfit(Tx tx, DateOnly? start, DateOnly end, string? search = null)
+    {
+        var costs = Statements.AverageCosts(tx, end);
+        return tx.Rows(
+                """
+                SELECT i.product_id, p.sku_code, p.name, p.unit, SUM(i.quantity) AS quantity, SUM(i.taxable_amount) AS sales
+                FROM sale_items i
+                JOIN sales s ON s.id = i.document_id AND s.status = 'ACTIVE'
+                JOIN products p ON p.id = i.product_id
+                WHERE s.date <= @end AND (@start IS NULL OR s.date >= @start)
+                  AND (@search IS NULL OR p.name LIKE @search OR p.sku_code LIKE @search)
+                GROUP BY i.product_id
+                """, new { start, end, search = Products.ProductService.LikePattern(search) })
+            .Select(r =>
+            {
+                var quantity = r.Qty("quantity");
+                var sales = r.Money("sales");
+                var average = costs.GetValueOrDefault(r.Long("product_id"));
+                var cost = Money.Round(quantity * average);
+                return new ProductProfitRow(r.Long("product_id"), r.Str("sku_code"), r.Str("name"), Products.Units.Parse(r.Str("unit")).Display(),
+                    quantity, sales, Money.Round(average), cost, sales - cost);
+            })
+            .ToList();
+    }
+
     // ------------------------------------------------------------------ sales & purchase reports
 
     /// <summary>Report filter: Status null means active documents only; "ALL" includes cancelled.</summary>
