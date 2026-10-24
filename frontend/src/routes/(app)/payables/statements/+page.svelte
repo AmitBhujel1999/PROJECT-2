@@ -13,7 +13,7 @@
 	const title = `${side.label} Statements`;
 </script>
 
-<svelte:head><title>{title} · Accounting</title></svelte:head>
+<svelte:head><title>{title} · Mero Lekhapal</title></svelte:head>
 <PageHeader {title} description="Derived from {side.docLabel.toLowerCase()}s, {side.payLabel.toLowerCase()}s and cancellations — balances are never edited manually." />
 <Card class="mb-4">
 	<div class="max-w-md">

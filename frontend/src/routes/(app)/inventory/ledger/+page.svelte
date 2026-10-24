@@ -33,7 +33,7 @@
 	}
 </script>
 
-<svelte:head><title>Stock Ledger · Accounting</title></svelte:head>
+<svelte:head><title>Stock Ledger · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Stock Ledger" description="Every stock movement, append-only. Opening/closing quantities are true historical balances.">
 	{#snippet actions()}<ExportButtons path="reports/stock-ledger/" query={list.filters} />{/snippet}

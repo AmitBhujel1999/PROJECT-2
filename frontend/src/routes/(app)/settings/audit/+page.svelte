@@ -25,7 +25,7 @@
 	let open = $state(false);
 </script>
 
-<svelte:head><title>Audit Log · Accounting</title></svelte:head>
+<svelte:head><title>Audit Log · Mero Lekhapal</title></svelte:head>
 <PageHeader title="Audit log" description="Append-only record of who changed what, when and from where." />
 
 <Card bodyClass="p-0">

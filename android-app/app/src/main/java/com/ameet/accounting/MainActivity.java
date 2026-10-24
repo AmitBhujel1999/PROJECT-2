@@ -33,6 +33,7 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -240,16 +241,13 @@ public class MainActivity extends Activity {
         int pad = dp(24);
         box.setPadding(pad, dp(48), pad, pad);
 
-        TextView logo = new TextView(this);
-        logo.setText("A");
-        logo.setTextColor(Color.WHITE);
-        logo.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
-        logo.setTypeface(Typeface.DEFAULT_BOLD);
-        logo.setGravity(Gravity.CENTER);
-        logo.setBackground(rounded(BLUE, 14));
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.logo);
+        logo.setContentDescription("Mero Lekhapal");
         box.addView(logo, new LinearLayout.LayoutParams(dp(56), dp(56)));
 
-        box.addView(text("Accounting & Inventory", 20, Color.WHITE, true), wrap(dp(14)));
+        box.addView(text("Mero Lekhapal", 22, Color.WHITE, true), wrap(dp(14)));
+        box.addView(text("Accounting & Inventory", 13, Color.argb(140, 255, 255, 255), false), wrap(dp(2)));
         box.addView(text("Connect to your accounting server", 14, Color.argb(170, 255, 255, 255), false), wrap(dp(4)));
 
         LinearLayout card = new LinearLayout(this);

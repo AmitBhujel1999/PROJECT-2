@@ -80,7 +80,7 @@
 	}
 </script>
 
-<svelte:head><title>Stock Adjustments · Accounting</title></svelte:head>
+<svelte:head><title>Stock Adjustments · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Stock Adjustments" description="Damaged, expired, lost or counted stock. Every adjustment is posted to the stock ledger and audit log.">
 	{#snippet actions()}

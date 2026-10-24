@@ -61,7 +61,7 @@
 	});
 </script>
 
-<svelte:head><title>Profit & Loss · Accounting</title></svelte:head>
+<svelte:head><title>Profit & Loss · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Profit & Loss" description="Income minus cost of goods sold and expenses. Amounts exclude VAT; stock at weighted average cost." />
 

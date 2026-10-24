@@ -3,7 +3,7 @@
 	import PaymentDetail from '$lib/components/payments/payment-detail.svelte';
 </script>
 
-<svelte:head><title>Receipts · Accounting</title></svelte:head>
+<svelte:head><title>Receipts · Mero Lekhapal</title></svelte:head>
 {#key page.params.id}
 	<PaymentDetail kind="receipt" id={Number(page.params.id)} />
 {/key}

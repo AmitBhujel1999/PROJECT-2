@@ -55,7 +55,7 @@
 	});
 </script>
 
-<svelte:head><title>Cash Flow · Accounting</title></svelte:head>
+<svelte:head><title>Cash Flow · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Cash Flow" description="Where cash and bank money came from and went, from the cash/bank books. Transfers between your own accounts are left out." />
 

@@ -33,7 +33,7 @@
 	}
 </script>
 
-<svelte:head><title>More · Accounting</title></svelte:head>
+<svelte:head><title>More · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="More" description="{auth.user?.display_name} · {auth.user?.role}" />
 

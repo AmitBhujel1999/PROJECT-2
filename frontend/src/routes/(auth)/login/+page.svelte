@@ -27,7 +27,9 @@
 		if (auth.user) goto(safeNext());
 	});
 
-	api.get<{ companies: { slug: string; name: string }[]; current: string }>('companies/').then((res) => {
+	api.get<{ companies: { slug: string; name: string }[]; current: string; setup?: boolean }>('companies/').then((res) => {
+		// A fresh desktop install has no users yet: set up the company first.
+		if (res.setup) return goto('/companies/new?setup=1', { replaceState: true });
 		companies = res.companies;
 		current = company = page.url.searchParams.get('company') ?? res.current;
 	});
@@ -53,7 +55,7 @@
 	}
 </script>
 
-<svelte:head><title>Login · Accounting</title></svelte:head>
+<svelte:head><title>Login · Mero Lekhapal</title></svelte:head>
 
 <form class="grid gap-4" onsubmit={submit} novalidate>
 	{#if companies.length}

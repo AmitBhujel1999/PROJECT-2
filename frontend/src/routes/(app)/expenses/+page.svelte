@@ -32,7 +32,7 @@
 	let end = $state('');
 </script>
 
-<svelte:head><title>Expenses · Accounting</title></svelte:head>
+<svelte:head><title>Expenses · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Expenses" description="Day-to-day business costs paid at the time they are recorded. Expenses are cancelled, never deleted.">
 	{#snippet actions()}

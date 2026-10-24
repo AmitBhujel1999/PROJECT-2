@@ -90,7 +90,7 @@
 	}
 </script>
 
-<svelte:head><title>New expense · Accounting</title></svelte:head>
+<svelte:head><title>New expense · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="New expense" description="Number is assigned on save. Tax and total are calculated by the server." back={{ href: '/expenses', label: 'Expenses' }} />
 

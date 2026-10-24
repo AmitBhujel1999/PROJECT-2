@@ -2,5 +2,5 @@
 	import PaymentList from '$lib/components/payments/payment-list.svelte';
 </script>
 
-<svelte:head><title>Payments · Accounting</title></svelte:head>
+<svelte:head><title>Payments · Mero Lekhapal</title></svelte:head>
 <PaymentList kind="payment" />

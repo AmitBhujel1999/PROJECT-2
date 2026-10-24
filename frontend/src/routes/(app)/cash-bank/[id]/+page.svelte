@@ -49,7 +49,7 @@
 	};
 </script>
 
-<svelte:head><title>{book?.account_name ?? 'Cash & Bank'} book · Accounting</title></svelte:head>
+<svelte:head><title>{book?.account_name ?? 'Cash & Bank'} book · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="{book?.account_name ?? ''} book" description="Money in and out of this account with a running balance." back={{ href: '/cash-bank', label: 'Cash & Bank' }} />
 

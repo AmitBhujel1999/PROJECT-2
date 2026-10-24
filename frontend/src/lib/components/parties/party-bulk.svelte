@@ -20,7 +20,7 @@
 	]);
 </script>
 
-<svelte:head><title>Bulk Update {side.plural} · Accounting</title></svelte:head>
+<svelte:head><title>Bulk Update {side.plural} · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Bulk Update {side.plural}" description="Change details of many {side.plural.toLowerCase()} at once, or add new ones from Excel." back={{ href: side.route, label: side.plural }} />
 

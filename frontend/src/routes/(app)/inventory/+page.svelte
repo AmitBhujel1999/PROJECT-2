@@ -26,7 +26,7 @@
 	const s = $derived(list.summary);
 </script>
 
-<svelte:head><title>Stock Register · Accounting</title></svelte:head>
+<svelte:head><title>Stock Register · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Stock Register" description="Stock is derived from the immutable stock ledger. Pick an 'as of' date for historical stock.">
 	{#snippet actions()}<ExportButtons path="reports/stock/" query={list.filters} />{/snippet}

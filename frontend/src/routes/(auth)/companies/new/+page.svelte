@@ -9,6 +9,8 @@
 	import Select from '$lib/components/ui/select.svelte';
 	import Textarea from '$lib/components/ui/textarea.svelte';
 
+	/** First run of the desktop program: sets up the main company itself, no approval needed. */
+	const setup = page.url.searchParams.get('setup') === '1';
 	let companies = $state<{ slug: string; name: string }[]>([]);
 	let form = $state({
 		name: '',
@@ -21,7 +23,9 @@
 		admin_password: '',
 		authorize_company: page.url.searchParams.get('from') ?? 'main',
 		authorize_username: '',
-		authorize_password: ''
+		authorize_password: '',
+		date_system: 'BS',
+		demo: false
 	});
 	let errors = $state<Record<string, string>>({});
 	let error = $state('');
@@ -35,7 +39,12 @@
 		error = '';
 		busy = true;
 		try {
-			const res = await api.post<{ slug: string }>('companies/', { ...form, name: form.name.trim() });
+			const res = await api.post<{ slug: string }>('companies/', { ...form, name: form.name.trim(), setup });
+			if (setup) {
+				await auth.login(form.admin_username.trim(), form.admin_password, res.data.slug);
+				await goto('/dashboard', { replaceState: true });
+				return;
+			}
 			if (auth.user) await auth.logout();
 			await goto(`/login?company=${encodeURIComponent(res.data.slug)}`);
 		} catch (err) {
@@ -47,10 +56,15 @@
 	}
 </script>
 
-<svelte:head><title>New company · Accounting</title></svelte:head>
+<svelte:head><title>{setup ? 'Set up your company' : 'New company'} · Mero Lekhapal</title></svelte:head>
 
-<h2 class="mb-1 text-base font-semibold">New company</h2>
-<p class="mb-4 text-sm text-muted-foreground">Starts empty: no products, parties, transactions or demo users. Existing companies stay as they are.</p>
+{#if setup}
+	<h2 class="mb-1 text-base font-semibold">Set up your company</h2>
+	<p class="mb-4 text-sm text-muted-foreground">Welcome! Enter your business details and choose the admin login you will use to sign in.</p>
+{:else}
+	<h2 class="mb-1 text-base font-semibold">New company</h2>
+	<p class="mb-4 text-sm text-muted-foreground">Starts empty: no products, parties, transactions or demo users. Existing companies stay as they are.</p>
+{/if}
 
 <form class="grid gap-3" onsubmit={submit} novalidate>
 	<Field label="Company name" for="c-name" required error={errors.name}>
@@ -71,7 +85,13 @@
 		<Input id="c-email" type="email" bind:value={form.email} />
 	</Field>
 
-	<h3 class="mt-2 border-t pt-3 text-sm font-semibold">Admin login for the new company</h3>
+	{#if setup}
+		<Field label="Dates" for="c-dates" hint="How dates are shown and typed. You can change this later.">
+			<Select id="c-dates" bind:value={form.date_system} options={[{ value: 'BS', label: 'Nepali (B.S.)' }, { value: 'AD', label: 'English (A.D.)' }]} />
+		</Field>
+	{/if}
+
+	<h3 class="mt-2 border-t pt-3 text-sm font-semibold">{setup ? 'Your admin login' : 'Admin login for the new company'}</h3>
 	<Field label="Your name" for="a-name" error={errors.admin_name}>
 		<Input id="a-name" bind:value={form.admin_name} />
 	</Field>
@@ -84,20 +104,27 @@
 		</Field>
 	</div>
 
-	<h3 class="mt-2 border-t pt-3 text-sm font-semibold">Approve with an existing admin</h3>
-	<Field label="Company" for="z-company" error={errors.authorize_company}>
-		<Select id="z-company" bind:value={form.authorize_company} options={companies.map((c) => ({ value: c.slug, label: c.name }))} />
-	</Field>
-	<div class="grid grid-cols-2 gap-3">
-		<Field label="Admin username" for="z-user" required error={errors.authorize_username}>
-			<Input id="z-user" autocomplete="username" bind:value={form.authorize_username} required />
+	{#if setup}
+		<label class="flex items-start gap-2 text-sm">
+			<input type="checkbox" bind:checked={form.demo} class="mt-0.5" />
+			<span>Add demo data to try the program <span class="text-muted-foreground">(every demo record says "(Demo)")</span></span>
+		</label>
+	{:else}
+		<h3 class="mt-2 border-t pt-3 text-sm font-semibold">Approve with an existing admin</h3>
+		<Field label="Company" for="z-company" error={errors.authorize_company}>
+			<Select id="z-company" bind:value={form.authorize_company} options={companies.map((c) => ({ value: c.slug, label: c.name }))} />
 		</Field>
-		<Field label="Admin password" for="z-pw" required error={errors.authorize_password}>
-			<Input id="z-pw" type="password" autocomplete="current-password" bind:value={form.authorize_password} required />
-		</Field>
-	</div>
+		<div class="grid grid-cols-2 gap-3">
+			<Field label="Admin username" for="z-user" required error={errors.authorize_username}>
+				<Input id="z-user" autocomplete="username" bind:value={form.authorize_username} required />
+			</Field>
+			<Field label="Admin password" for="z-pw" required error={errors.authorize_password}>
+				<Input id="z-pw" type="password" autocomplete="current-password" bind:value={form.authorize_password} required />
+			</Field>
+		</div>
+	{/if}
 
 	{#if error}<p class="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{error}</p>{/if}
-	<Button type="submit" loading={busy} class="w-full">{busy ? 'Creating company…' : 'Create company'}</Button>
+	<Button type="submit" loading={busy} class="w-full">{busy ? (setup ? 'Setting up…' : 'Creating company…') : setup ? 'Start' : 'Create company'}</Button>
 </form>
-<a href="/login" class="mt-4 block text-center text-sm text-muted-foreground hover:text-foreground">Back to login</a>
+{#if !setup}<a href="/login" class="mt-4 block text-center text-sm text-muted-foreground hover:text-foreground">Back to login</a>{/if}

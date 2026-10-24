@@ -12,7 +12,7 @@
 	];
 </script>
 
-<svelte:head><title>Keyboard Shortcuts · Accounting</title></svelte:head>
+<svelte:head><title>Keyboard Shortcuts · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Keyboard Shortcuts" description="Work without the mouse." back={{ href: '/dashboard', label: 'Dashboard' }} />
 

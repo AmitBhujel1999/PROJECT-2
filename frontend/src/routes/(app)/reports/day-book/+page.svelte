@@ -41,7 +41,7 @@
 	}
 </script>
 
-<svelte:head><title>Day Book · Accounting</title></svelte:head>
+<svelte:head><title>Day Book · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Day Book" description="Every entry made on a day: sales, purchases, receipts, payments, expenses and contra." />
 

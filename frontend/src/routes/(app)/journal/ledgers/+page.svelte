@@ -115,7 +115,7 @@
 	}
 </script>
 
-<svelte:head><title>Chart of Accounts · Accounting</title></svelte:head>
+<svelte:head><title>Chart of Accounts · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Chart of Accounts" description="Ledgers used in journal vouchers. Cash/bank accounts, customers, vendors and expense categories can be used too." back={{ href: '/journal', label: 'Journal vouchers' }}>
 	{#snippet actions()}

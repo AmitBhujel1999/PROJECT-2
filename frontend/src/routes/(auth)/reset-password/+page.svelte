@@ -34,7 +34,7 @@
 	}
 </script>
 
-<svelte:head><title>Choose a new password · Accounting</title></svelte:head>
+<svelte:head><title>Choose a new password · Mero Lekhapal</title></svelte:head>
 
 <h2 class="mb-4 text-base font-semibold">Choose a new password</h2>
 {#if done}

@@ -124,7 +124,7 @@
 {:else}
 	<div class="flex min-h-screen flex-col">
 		<header class="menubar no-print sticky top-0 z-30 flex h-10 items-center gap-1 px-2 sm:px-3">
-			<a href="/dashboard" class="mr-1 grid size-6 shrink-0 place-items-center rounded bg-primary text-xs font-bold text-white" title="Dashboard">A</a>
+			<a href="/dashboard" class="mr-1 shrink-0" title="Dashboard"><img src="/favicon.svg" alt="Mero Lekhapal" class="size-6 rounded" /></a>
 
 			<nav class="flex items-center" aria-label="Main navigation">
 				{#each menus as menu (menu.label)}
@@ -197,7 +197,7 @@
 					</div>
 				{/if}
 			</div>
-			<p class="status-line no-print">{auth.settings?.business_name ?? 'Accounting'} (F.Y. {fiscalYear})</p>
+			<p class="status-line no-print">{auth.settings?.business_name ?? 'Mero Lekhapal'} (F.Y. {fiscalYear})</p>
 		</main>
 	</div>
 {/if}

@@ -14,7 +14,7 @@
 	];
 </script>
 
-<svelte:head><title>Bulk Update Items · Accounting</title></svelte:head>
+<svelte:head><title>Bulk Update Items · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Bulk Update Items" description="Change prices and details of many items at once, or add new items from Excel." back={{ href: '/products', label: 'Products' }} />
 

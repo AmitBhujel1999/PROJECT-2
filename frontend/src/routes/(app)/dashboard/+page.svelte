@@ -112,7 +112,7 @@
 	const stockConfig = $derived(hbar((d?.stock_value_by_product ?? []).map((p) => ({ name: p.name, value: Number(p.value) })), 'Stock value (cost)', SERIES[0]));
 </script>
 
-<svelte:head><title>Dashboard · Accounting</title></svelte:head>
+<svelte:head><title>Dashboard · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Dashboard" description="Business overview for {fmtDate(start)} – {fmtDate(end)}">
 	{#snippet actions()}

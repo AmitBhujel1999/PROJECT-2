@@ -53,7 +53,7 @@
 	}
 </script>
 
-<svelte:head><title>Cash & Bank · Accounting</title></svelte:head>
+<svelte:head><title>Cash & Bank · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Cash & Bank" description="Where your money is kept. Every receipt, payment and expense names one of these accounts.">
 	{#snippet actions()}

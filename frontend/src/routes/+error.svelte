@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 </script>
 
-<svelte:head><title>{page.status} · Accounting</title></svelte:head>
+<svelte:head><title>{page.status} · Mero Lekhapal</title></svelte:head>
 <div class="grid min-h-screen place-items-center p-6 text-center">
 	<div>
 		<h1 class="text-5xl font-bold text-primary">{page.status}</h1>

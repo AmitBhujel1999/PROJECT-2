@@ -37,7 +37,7 @@
 	const show = (b: DrCr | undefined) => (b ? `${money(b.amount)}${Number(b.amount) ? ` ${b.side}` : ''}` : '');
 </script>
 
-<svelte:head><title>{book?.ledger_name ?? 'Ledger'} · Accounting</title></svelte:head>
+<svelte:head><title>{book?.ledger_name ?? 'Ledger'} · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title={book?.ledger_name ?? 'Ledger'} description={book?.group_display} back={{ href: '/journal/ledgers', label: 'Chart of Accounts' }} />
 

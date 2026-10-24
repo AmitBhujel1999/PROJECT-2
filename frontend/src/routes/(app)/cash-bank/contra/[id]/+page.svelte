@@ -26,7 +26,7 @@
 	}
 </script>
 
-<svelte:head><title>Contra · Accounting</title></svelte:head>
+<svelte:head><title>Contra · Mero Lekhapal</title></svelte:head>
 
 {#if c}
 	<PageHeader title="Contra {c.contra_number}" description={fmtDate(c.date)} back={{ href: '/cash-bank/contra', label: 'Contra entries' }}>

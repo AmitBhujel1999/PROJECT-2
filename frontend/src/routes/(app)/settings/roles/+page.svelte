@@ -10,7 +10,7 @@
 	const allPerms = $derived([...new Set((q.data ?? []).flatMap((r) => r.permissions))].sort());
 </script>
 
-<svelte:head><title>Roles · Accounting</title></svelte:head>
+<svelte:head><title>Roles · Mero Lekhapal</title></svelte:head>
 <PageHeader title="Roles & permissions" description="Permissions are enforced by the Django API on every request. Assign roles under Users." />
 {#if q.data}
 	<div class="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">

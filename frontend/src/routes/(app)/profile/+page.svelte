@@ -54,7 +54,7 @@
 	}
 </script>
 
-<svelte:head><title>Profile · Accounting</title></svelte:head>
+<svelte:head><title>Profile · Mero Lekhapal</title></svelte:head>
 <PageHeader title="My profile" description="{auth.user?.username} · {auth.user?.role}" />
 <Tabs tabs={[{ value: 'profile', label: 'Profile' }, { value: 'password', label: 'Change password' }]} bind:value={tab} />
 

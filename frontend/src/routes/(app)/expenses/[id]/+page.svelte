@@ -26,7 +26,7 @@
 	}
 </script>
 
-<svelte:head><title>Expenses · Accounting</title></svelte:head>
+<svelte:head><title>Expenses · Mero Lekhapal</title></svelte:head>
 
 {#if e}
 	<PageHeader title="Expense {e.expense_number}" description="{e.category_name} · {fmtDate(e.date)}" back={{ href: '/expenses', label: 'Expenses' }}>

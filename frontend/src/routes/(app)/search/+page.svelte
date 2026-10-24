@@ -50,7 +50,7 @@
 	}, 300);
 </script>
 
-<svelte:head><title>Search · Accounting</title></svelte:head>
+<svelte:head><title>Search · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Search" back={{ href: '/more', label: 'More' }} />
 

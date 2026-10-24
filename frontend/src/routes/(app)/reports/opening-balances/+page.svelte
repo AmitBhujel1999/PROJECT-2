@@ -142,7 +142,7 @@
 </script>
 
 <svelte:window onkeydown={onKey} />
-<svelte:head><title>Opening Balances · Accounting</title></svelte:head>
+<svelte:head><title>Opening Balances · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Opening Balances" description="Balances brought forward when the books start. They have no date and count before every entry.">
 	{#snippet actions()}

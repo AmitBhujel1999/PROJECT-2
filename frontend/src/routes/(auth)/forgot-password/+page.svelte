@@ -24,7 +24,7 @@
 	}
 </script>
 
-<svelte:head><title>Reset password · Accounting</title></svelte:head>
+<svelte:head><title>Reset password · Mero Lekhapal</title></svelte:head>
 
 <h2 class="mb-1 text-base font-semibold">Reset your password</h2>
 <p class="mb-4 text-sm text-muted-foreground">Enter your account email and we'll send you a reset link.</p>

@@ -21,7 +21,7 @@
 	let end = $state('');
 </script>
 
-<svelte:head><title>Contra · Accounting</title></svelte:head>
+<svelte:head><title>Contra · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Contra entries" description="Money moved between your own accounts: cash deposited in the bank, cash withdrawn, wallet top-ups." back={{ href: '/cash-bank', label: 'Cash & Bank' }}>
 	{#snippet actions()}

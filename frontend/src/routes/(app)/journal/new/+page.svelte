@@ -80,7 +80,7 @@
 </script>
 
 <svelte:window onkeydown={onKeydown} />
-<svelte:head><title>New journal voucher · Accounting</title></svelte:head>
+<svelte:head><title>New journal voucher · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="New journal voucher" description="Debit and credit must be equal. Number is assigned on save. Ctrl+S saves." back={{ href: '/journal', label: 'Journal vouchers' }} />
 

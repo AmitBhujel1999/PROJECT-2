@@ -36,7 +36,7 @@
 	}
 </script>
 
-<svelte:head><title>Journal Voucher · Accounting</title></svelte:head>
+<svelte:head><title>Journal Voucher · Mero Lekhapal</title></svelte:head>
 
 {#if v}
 	<PageHeader title="Journal Voucher {v.voucher_number}" description={fmtDate(v.date)} back={{ href: '/journal', label: 'Journal vouchers' }}>

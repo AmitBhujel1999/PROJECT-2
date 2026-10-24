@@ -57,7 +57,7 @@
 	}
 </script>
 
-<svelte:head><title>New contra · Accounting</title></svelte:head>
+<svelte:head><title>New contra · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="New contra" description="Move money between your own accounts, e.g. deposit cash in the bank or withdraw cash." back={{ href: '/cash-bank/contra', label: 'Contra entries' }} />
 

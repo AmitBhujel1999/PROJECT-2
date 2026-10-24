@@ -21,7 +21,7 @@
 	let status = $state('');
 </script>
 
-<svelte:head><title>Journal Vouchers · Accounting</title></svelte:head>
+<svelte:head><title>Journal Vouchers · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Journal Vouchers" description="Dr/Cr adjustments: capital, loans, assets, depreciation, provisions, party adjustments.">
 	{#snippet actions()}

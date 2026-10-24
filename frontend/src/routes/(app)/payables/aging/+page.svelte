@@ -2,5 +2,5 @@
 	import AgingReport from '$lib/components/accounts/aging-report.svelte';
 </script>
 
-<svelte:head><title>Aging · Accounting</title></svelte:head>
+<svelte:head><title>Aging · Mero Lekhapal</title></svelte:head>
 <AgingReport type="VENDOR" />

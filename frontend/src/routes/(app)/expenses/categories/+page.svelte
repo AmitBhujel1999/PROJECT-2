@@ -77,7 +77,7 @@
 	}
 </script>
 
-<svelte:head><title>Expense Categories · Accounting</title></svelte:head>
+<svelte:head><title>Expense Categories · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Expense Categories" description="Group expenses for reporting. Categories with expenses are deactivated, never deleted.">
 	{#snippet actions()}

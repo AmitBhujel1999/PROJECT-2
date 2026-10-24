@@ -62,7 +62,7 @@
 	}
 </script>
 
-<svelte:head><title>Users · Accounting</title></svelte:head>
+<svelte:head><title>Users · Mero Lekhapal</title></svelte:head>
 <PageHeader title="Users" description="Users are deactivated rather than deleted. Role changes are recorded in the audit log.">
 	{#snippet actions()}<Button onclick={() => edit(null)}><Plus />New user</Button>{/snippet}
 </PageHeader>

@@ -69,7 +69,7 @@
 	const show = (v: string) => (Number(v) ? money(v) : '');
 </script>
 
-<svelte:head><title>Trial Balance · Accounting</title></svelte:head>
+<svelte:head><title>Trial Balance · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Trial Balance" description="Closing balance of every account in Debit and Credit columns. Income and expenses are for the period." />
 

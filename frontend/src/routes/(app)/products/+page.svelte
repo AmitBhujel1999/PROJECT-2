@@ -48,7 +48,7 @@
 	});
 </script>
 
-<svelte:head><title>Products · Accounting</title></svelte:head>
+<svelte:head><title>Products · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Products" description="Items you buy and sell. Products with history are deactivated, never deleted.">
 	{#snippet actions()}

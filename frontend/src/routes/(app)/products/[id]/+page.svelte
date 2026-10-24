@@ -34,7 +34,7 @@
 	const p = $derived(product.data);
 </script>
 
-<svelte:head><title>{p?.name ?? 'Product'} · Accounting</title></svelte:head>
+<svelte:head><title>{p?.name ?? 'Product'} · Mero Lekhapal</title></svelte:head>
 
 {#if p}
 	<PageHeader title={p.name} description="SKU {p.sku_code} · {p.unit_display}" back={{ href: '/products', label: 'Products' }}>

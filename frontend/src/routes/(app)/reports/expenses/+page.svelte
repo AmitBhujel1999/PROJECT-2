@@ -59,7 +59,7 @@
 	const hasJournal = $derived(!!s && Number(s.journal_amount) !== 0);
 </script>
 
-<svelte:head><title>Expense Report · Accounting</title></svelte:head>
+<svelte:head><title>Expense Report · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Expense Report" description="Expenses by date and category. Cancelled expenses are excluded unless selected.">
 	{#snippet actions()}<ExportButtons {path} query={list.filters} />{/snippet}

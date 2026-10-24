@@ -2,5 +2,5 @@
 	import TradeReport from '$lib/components/reports/trade-report.svelte';
 </script>
 
-<svelte:head><title>Sales Report · Accounting</title></svelte:head>
+<svelte:head><title>Sales Report · Mero Lekhapal</title></svelte:head>
 <TradeReport kind="sales" />

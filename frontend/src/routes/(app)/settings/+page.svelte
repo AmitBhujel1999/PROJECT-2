@@ -40,7 +40,7 @@
 	}
 </script>
 
-<svelte:head><title>Settings · Accounting</title></svelte:head>
+<svelte:head><title>Settings · Mero Lekhapal</title></svelte:head>
 <PageHeader title="Business settings" description="Shown on invoices, statements and reports. Tax rates are configurable — 13% VAT is only the default for new products." />
 
 {#if form}

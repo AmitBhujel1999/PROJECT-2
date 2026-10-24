@@ -44,7 +44,7 @@
 	}
 </script>
 
-<svelte:head><title>Balance Sheet · Accounting</title></svelte:head>
+<svelte:head><title>Balance Sheet · Mero Lekhapal</title></svelte:head>
 
 <PageHeader title="Balance Sheet" description="What the business owns and owes on a date. Stock at weighted average cost." />
 
