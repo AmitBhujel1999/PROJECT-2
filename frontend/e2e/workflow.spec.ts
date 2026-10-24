@@ -109,7 +109,6 @@ test('complete accounting & inventory workflow', async ({ page }) => {
 	await page.goto('/receipts/new');
 	await pick(page, '#pay-party', CUSTOMER);
 	await page.fill('#pay-amount', '5000');
-	await page.selectOption('#pay-method', 'BANK');
 	await page.fill('#pay-ref', `TXN-${run}`);
 	await page.getByTestId('alloc-manual').check();
 	await page.getByLabel(`Allocate to ${invoiceNumber}`).fill('5000');
@@ -152,7 +151,6 @@ test('complete accounting & inventory workflow', async ({ page }) => {
 	await page.goto('/payments/new');
 	await pick(page, '#pay-party', VENDOR);
 	await page.fill('#pay-amount', '9605');
-	await page.selectOption('#pay-method', 'CHEQUE');
 	await page.getByTestId('save-payment').click();
 	await expectToast(page, 'success', /Payment PAY-\d{6} recorded successfully/);
 	await expect(page.getByTestId('p-allocated')).toHaveText('9,605.00');

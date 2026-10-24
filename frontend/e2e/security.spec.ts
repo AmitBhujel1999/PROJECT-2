@@ -35,7 +35,7 @@ test('phone navigation works', async ({ browser }) => {
 	const page = await context.newPage();
 	await login(page);
 	await page.getByRole('navigation', { name: 'Bottom navigation' }).getByRole('link', { name: 'More' }).click();
-	await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Customers' }).click();
+	await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Customers', exact: true }).first().click();
 	await expect(page).toHaveURL(/\/customers$/);
 	await expect(page.getByRole('heading', { name: 'Customers' })).toBeVisible();
 	await context.close();

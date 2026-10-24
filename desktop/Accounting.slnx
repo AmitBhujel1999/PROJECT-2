@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Accounting.Core/Accounting.Core.csproj" />
+    <Project Path="src/Accounting.Desktop/Accounting.Desktop.csproj" />
+    <Project Path="src/Accounting.Host/Accounting.Host.csproj" />
+    <Project Path="src/Accounting.Server/Accounting.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Accounting.Tests/Accounting.Tests.csproj" />
+  </Folder>
+</Solution>

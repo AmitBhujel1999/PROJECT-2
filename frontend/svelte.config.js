@@ -1,4 +1,9 @@
-import adapter from '@sveltejs/adapter-node';
+import nodeAdapter from '@sveltejs/adapter-node';
+import staticAdapter from '@sveltejs/adapter-static';
+
+// ADAPTER=static builds plain files (build-static/) that the Windows program serves itself;
+// the default node build is for the Docker / server setup.
+const isStatic = process.env.ADAPTER === 'static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
@@ -8,7 +13,7 @@ const config = {
 		runes: ({ filename }) => (filename.split(/[/\\]/).includes('node_modules') ? undefined : true)
 	},
 	kit: {
-		adapter: adapter({ out: 'build' }),
+		adapter: isStatic ? staticAdapter({ pages: 'build-static', assets: 'build-static', fallback: '200.html' }) : nodeAdapter({ out: 'build' }),
 		csp: {
 			mode: 'auto',
 			directives: {

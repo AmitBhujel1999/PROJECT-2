@@ -1,0 +1,7 @@
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+installer/out/
+installer/redist/

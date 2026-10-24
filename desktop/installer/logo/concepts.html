@@ -1,0 +1,62 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 40px; background: #f1f5f9; font-family: "Segoe UI", sans-serif; color: #0f172a; width: 1500px; }
+  h1 { margin: 0 0 6px; font-size: 30px; }
+  p.sub { margin: 0 0 30px; color: #64748b; font-size: 16px; }
+  .row { display: grid; grid-template-columns: 60px 180px 110px 1fr 380px; align-items: center; gap: 28px; background: #fff; border-radius: 18px; padding: 22px 30px; margin-bottom: 18px; box-shadow: 0 1px 3px #0001; }
+  .num { font-size: 40px; font-weight: 700; color: #cbd5e1; }
+  .small { display: flex; gap: 14px; align-items: center; }
+  .lockup { display: flex; align-items: center; gap: 16px; }
+  .lockup .name { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; line-height: 1; }
+  .lockup .tag { font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #64748b; margin-top: 6px; }
+  .dark { background: linear-gradient(135deg, #0f172a, #172554); border-radius: 14px; padding: 18px 22px; }
+  .dark .name { color: #fff; } .dark .tag { color: #ffffff88; }
+  .desc { font-size: 15px; color: #334155; line-height: 1.45; }
+  .desc b { display: block; font-size: 19px; color: #0f172a; margin-bottom: 4px; }
+  .dev { font-family: "Nirmala UI", "Mangal", sans-serif; }
+</style></head>
+<body>
+<h1>Mero Lekhapal: logo concepts</h1>
+<p class="sub">Big app icon, small sizes (taskbar 32px, browser tab 16px), and the name on a dark login screen.</p>
+
+<!-- 1: Devanagari ले on navy -->
+<template id="i1"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1e3a8a"/><text x="32" y="45" text-anchor="middle" class="dev" font-size="38" font-weight="700" fill="#fff">ले</text><rect x="16" y="51" width="32" height="3.5" rx="1.75" fill="#fbbf24"/></svg></template>
+
+<!-- 2: red bahi-khata ledger with gold ले -->
+<template id="i2"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#9f1239"/><rect x="8" y="8" width="48" height="48" rx="8" fill="none" stroke="#fbbf24" stroke-width="2.5"/><path d="M8 22h48M8 42h48" stroke="#fbbf24" stroke-width="1.2" opacity=".55"/><text x="32" y="43" text-anchor="middle" class="dev" font-size="30" font-weight="700" fill="#fde68a">ले</text></svg></template>
+
+<!-- 3: Himalaya peaks that are a rising chart -->
+<template id="i3"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1e3a8a"/><path d="M10 46 L24 28 L32 37 L44 18 L54 30" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M39.5 25 L44 18 L48.5 24.5" fill="none" stroke="#bae6fd" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><rect x="10" y="50" width="44" height="3.5" rx="1.75" fill="#fbbf24"/></svg></template>
+
+<!-- 4: open ledger book with bars -->
+<template id="i4"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0f766e"/><path d="M32 20c-6-4-13-5-20-4v30c7-1 14 0 20 4 6-4 13-5 20-4V16c-7-1-14 0-20 4z" fill="#fff"/><path d="M32 20v30" stroke="#0f766e" stroke-width="2"/><rect x="17" y="34" width="4" height="8" rx="1" fill="#0f766e"/><rect x="23" y="29" width="4" height="13" rx="1" fill="#0f766e"/><rect x="37" y="31" width="4" height="11" rx="1" fill="#f59e0b"/><rect x="43" y="25" width="4" height="17" rx="1" fill="#f59e0b"/></svg></template>
+
+<!-- 5: Nepal flag colours, ML monogram with tick -->
+<template id="i5"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#003893"/><rect x="4" y="4" width="56" height="56" rx="11" fill="#dc143c"/><text x="31" y="41" text-anchor="middle" font-family="Segoe UI" font-size="25" font-weight="800" fill="#fff" letter-spacing="-1">ML</text><path d="M20 48 l5 4 l10 -8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></template>
+
+<div id="rows"></div>
+<script>
+const info = [
+  ['Devanagari "ले"', 'First letter of लेखापाल, in white on the current navy, with a gold ledger line. Clearly Nepali, simple, reads well tiny.'],
+  ['Red bahi-khata', 'The traditional red cloth ledger every Nepali shop knows, gold border and "ले". Heritage feel, stands out on a taskbar.'],
+  ['Himalaya chart', 'Mountain peaks that are also a rising profit line. Nepal + growth, no text, modern.'],
+  ['Open ledger', 'An open account book with bar charts on its pages: accounting (left) + inventory (right). Teal and amber.'],
+  ['Nepal flag "ML"', 'Crimson and blue of the Nepal flag, ML monogram and a check mark ("books are correct"). Bold, patriotic.'],
+];
+const rows = document.getElementById('rows');
+info.forEach(([title, text], i) => {
+  const svg = document.getElementById('i' + (i + 1)).innerHTML;
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `
+    <div class="num">${i + 1}</div>
+    <div style="width:170px;height:170px">${svg}</div>
+    <div class="small"><div style="width:32px;height:32px">${svg}</div><div style="width:16px;height:16px">${svg}</div></div>
+    <div class="desc"><b>${title}</b>${text}</div>
+    <div class="lockup dark"><div style="width:56px;height:56px;flex:none">${svg}</div><div><div class="name">Mero Lekhapal</div><div class="tag">Accounting &amp; Inventory</div></div></div>`;
+  rows.appendChild(row);
+});
+document.querySelectorAll('svg').forEach(s => { s.setAttribute('width', '100%'); s.setAttribute('height', '100%'); });
+</script>
+</body></html>
