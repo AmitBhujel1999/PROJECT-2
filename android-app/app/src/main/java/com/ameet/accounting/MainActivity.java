@@ -50,7 +50,9 @@ public class MainActivity extends Activity {
 
     private static final String PREFS = "accounting";
     private static final String KEY_SERVER = "server";
-    private static final String DEFAULT_SERVER = "http://192.168.1.72:4173";
+    private static final String DEFAULT_SERVER = "http://192.168.1.84:4173";
+    /** Online copy of the books (Firebase), for phones away from the shop Wi-Fi. */
+    private static final String CLOUD = "https://mero-lekhapal.web.app";
     private static final int NAVY = Color.rgb(0x17, 0x1c, 0x2b);
     private static final int BLUE = Color.rgb(0x26, 0x59, 0xa6);
 
@@ -58,6 +60,8 @@ public class MainActivity extends Activity {
     private WebView web;
     private String server;
     private String pendingDownload;
+    /** Showing the online copy instead of the computer. */
+    private boolean online;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -109,13 +113,14 @@ public class MainActivity extends Activity {
         web.setDownloadListener((url, ua, disposition, mime, length) ->
                 download(url, URLUtil.guessFileName(url, disposition, mime)));
         root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        if (state == null || web.restoreState(state) == null) web.loadUrl(server + "/dashboard");
+        if (state == null || web.restoreState(state) == null) web.loadUrl(online ? CLOUD + "/link" : server + "/dashboard");
         // If the server never answers (wrong address, PC switched off), go back
         // to the address screen instead of leaving a blank page.
         WebView loading = web;
         root.postDelayed(() -> {
             if (web == loading && web.getProgress() < 100 && (web.getUrl() == null || web.getTitle() == null || web.getTitle().isEmpty())) {
-                showSetup("No answer from " + server + ". Is the computer on and the app started?");
+                showSetup(online ? "No answer from the online copy. Check the internet connection."
+                        : "No answer from " + server + ". Is the computer on and the app started?");
             }
         }, 20000);
     }
@@ -147,6 +152,12 @@ public class MainActivity extends Activity {
             Uri base = Uri.parse(server);
             String path = url.getPath() == null ? "" : url.getPath();
             boolean same = url.getHost() != null && url.getHost().equals(base.getHost()) && url.getPort() == base.getPort();
+            boolean cloud = url.getHost() != null && url.getHost().equals(Uri.parse(CLOUD).getHost());
+            if (cloud) {
+                // Linking this phone, or the online copy: stays in the app (PDFs need the computer there).
+                online = true;
+                return false;
+            }
             if (!same) {
                 // Links to other sites open in the phone's browser.
                 try {
@@ -165,7 +176,7 @@ public class MainActivity extends Activity {
 
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-            if (request.isForMainFrame()) showSetup("Could not reach " + server + "\n(" + error.getDescription() + ")");
+            if (request.isForMainFrame()) showSetup("Could not reach " + (online ? "the online copy" : server) + "\n(" + error.getDescription() + ")");
         }
     }
 
@@ -290,6 +301,7 @@ public class MainActivity extends Activity {
                 return;
             }
             server = value;
+            online = false;
             prefs().edit().putString(KEY_SERVER, server).apply();
             showWeb(null);
         };
@@ -302,6 +314,23 @@ public class MainActivity extends Activity {
         box.addView(card, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT) {{
             topMargin = dp(24);
         }});
+
+        // Away from the shop: the online copy (the phone must have been linked once on the shop Wi-Fi).
+        Button cloud = new Button(this);
+        cloud.setText("Open online copy (away from the shop)");
+        cloud.setTextColor(Color.WHITE);
+        cloud.setAllCaps(false);
+        cloud.setBackground(rounded(Color.argb(40, 255, 255, 255), 10));
+        cloud.setOnClickListener(v -> {
+            online = true;
+            showWeb(null);
+        });
+        box.addView(cloud, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48)) {{
+            topMargin = dp(16);
+        }});
+        box.addView(text("Shows the last copy uploaded by the computer, from any Wi-Fi or mobile data. "
+                + "Link this phone first: on the shop Wi-Fi open More, then Use this phone anywhere.", 12,
+                Color.argb(150, 255, 255, 255), false), wrap(dp(8)));
         android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         scroll.addView(box);
         root.addView(scroll);

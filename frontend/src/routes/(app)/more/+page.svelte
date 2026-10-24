@@ -4,6 +4,9 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { MENUS, filterMenu, isGroup, type MenuLeaf, type MenuNode } from '$lib/components/layout/menu';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
+	import { api, ApiError } from '$lib/api/client';
+	import { cloudMode } from '$lib/cloud/cloud';
+	import { toast } from '$lib/stores/toast.svelte';
 
 	/** Phone menu: every menu-bar entry the user may open, as grouped lists. */
 	function leaves(nodes: MenuNode[]): MenuLeaf[] {
@@ -24,6 +27,19 @@
 
 	// Present only inside the phone apps (Android MainActivity / iPhone WebViewController bridge).
 	const phoneApp = (globalThis as { AccountingApp?: { changeServer(): void; server(): string } }).AccountingApp;
+
+	let linking = $state(false);
+	/** Link this phone to the online copy, so it opens the books away from the shop's Wi-Fi too. */
+	async function useAnywhere() {
+		linking = true;
+		try {
+			const res = await api.post<{ url: string }>('cloud/pair/');
+			window.location.href = res.data.url;
+		} catch (err) {
+			toast.error(err instanceof ApiError ? err.message : 'Could not start linking.');
+			linking = false;
+		}
+	}
 
 	async function pick(leaf: MenuLeaf) {
 		if (leaf.action === 'logout') {
@@ -64,6 +80,13 @@
 					{/if}
 				</li>
 			{/each}
+			{#if !cloudMode}
+				<li>
+					<button type="button" class="w-full px-3 py-2.5 text-left text-sm" onclick={useAnywhere} disabled={linking}>
+						{linking ? 'Linking…' : 'Use this phone anywhere'}<span class="block text-[11px] text-muted-foreground">See your books away from the shop Wi-Fi (online copy)</span>
+					</button>
+				</li>
+			{/if}
 			{#if phoneApp}
 				<li>
 					<button type="button" class="w-full px-3 py-2.5 text-left text-sm" onclick={() => phoneApp.changeServer()}>

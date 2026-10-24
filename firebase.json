@@ -1,0 +1,22 @@
+{
+  "firestore": {
+    "rules": "firebase/firestore.rules"
+  },
+  "hosting": {
+    "public": "frontend/build-static",
+    "ignore": ["firebase.json", "**/.*"],
+    "rewrites": [
+      { "source": "/api/**", "destination": "/offline.html" },
+      { "source": "**", "destination": "/200.html" }
+    ],
+    "headers": [
+      { "source": "/_app/immutable/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
+      { "source": "**/*.html", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+    ]
+  },
+  "auth": {
+    "providers": {
+      "anonymous": true
+    }
+  }
+}

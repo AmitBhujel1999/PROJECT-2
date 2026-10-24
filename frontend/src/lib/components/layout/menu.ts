@@ -78,7 +78,8 @@ export const MENUS: TopMenu[] = [
 					{ label: 'Roles & Permissions', href: '/settings/roles', perm: 'settings.view' }
 				]
 			},
-			{ label: 'Audit Log', href: '/settings/audit', perm: 'audit.view' }
+			{ label: 'Audit Log', href: '/settings/audit', perm: 'audit.view' },
+			{ label: 'Phone Anywhere', href: '/settings/cloud', perm: 'users.manage' }
 		]
 	},
 	{

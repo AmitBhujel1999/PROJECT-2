@@ -9,9 +9,10 @@ public sealed record Page<T>(IReadOnlyList<T> Results, int Count, int PageNumber
     public static int NormalisePageSize(int? size) => size is 25 or 50 or 100 ? size.Value : 25;
 }
 
-public sealed record PageRequest(int Page = 1, int? PageSize = null)
+/// <param name="All">Every row on one page (the online copy for phones); never set from a request.</param>
+public sealed record PageRequest(int Page = 1, int? PageSize = null, bool All = false)
 {
-    public int Size => Page<object>.NormalisePageSize(PageSize);
+    public int Size => All ? 1_000_000 : Page<object>.NormalisePageSize(PageSize);
     public int Offset => (Math.Max(Page, 1) - 1) * Size;
 
     public static readonly PageRequest First = new();

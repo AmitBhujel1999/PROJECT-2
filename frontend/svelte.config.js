@@ -22,7 +22,13 @@ const config = {
 				'style-src': ['self', 'unsafe-inline'],
 				'img-src': ['self', 'data:', 'blob:'],
 				'font-src': ['self', 'data:'],
-				'connect-src': ['self'],
+				// Firebase (online copy for phones): sign-in tokens and the Firestore copy.
+				'connect-src': [
+					'self',
+					'https://identitytoolkit.googleapis.com',
+					'https://securetoken.googleapis.com',
+					'https://firestore.googleapis.com'
+				],
 				'frame-src': ['self', 'blob:'],
 				'object-src': ['none'],
 				'base-uri': ['self'],

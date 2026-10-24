@@ -3,6 +3,7 @@ import UIKit
 /// "Connect to your computer": asks for the address shown in the PC program's title bar.
 final class SetupViewController: UIViewController, UITextFieldDelegate {
     var onConnect: ((String) -> Void)?
+    var onOnline: (() -> Void)?
 
     private let address: String?
     private let error: String?
@@ -68,7 +69,21 @@ final class SetupViewController: UIViewController, UITextFieldDelegate {
             "If iPhone asks to find devices on your local network, tap Allow.",
             size: 13, weight: .regular, color: UIColor(white: 1, alpha: 0.6))
 
-        let card = UIStackView(arrangedSubviews: [field, errorLabel, connect])
+        // Away from the shop: the online copy (the phone must have been linked once on the shop Wi-Fi).
+        let online = UIButton(type: .system)
+        online.setTitle("Open online copy (away from the shop)", for: .normal)
+        online.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
+        online.setTitleColor(.white, for: .normal)
+        online.backgroundColor = UIColor(white: 1, alpha: 0.12)
+        online.layer.cornerRadius = 10
+        online.heightAnchor.constraint(equalToConstant: 48).isActive = true
+        online.addTarget(self, action: #selector(onlineTapped), for: .touchUpInside)
+        let onlineHelp = label(
+            "Shows the last copy uploaded by the computer, from any Wi-Fi or mobile data. " +
+            "Link this phone first: on the shop Wi-Fi open More, then Use this phone anywhere.",
+            size: 12, weight: .regular, color: UIColor(white: 1, alpha: 0.55))
+
+        let card = UIStackView(arrangedSubviews: [field, errorLabel, connect, online, onlineHelp])
         card.axis = .vertical
         card.spacing = 12
 
@@ -120,6 +135,11 @@ final class SetupViewController: UIViewController, UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         connectTapped()
         return true
+    }
+
+    @objc private func onlineTapped() {
+        view.endEditing(true)
+        onOnline?()
     }
 
     @objc private func connectTapped() {

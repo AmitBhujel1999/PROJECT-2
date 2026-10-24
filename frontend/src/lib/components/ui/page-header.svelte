@@ -14,7 +14,7 @@
 			{#if back}
 				<a href={back.href} data-back class="no-print -ml-1 rounded p-1" aria-label="Back to {back.label}"><ChevronLeft class="size-5" /></a>
 			{:else}
-				<span class="grid size-6 shrink-0 place-items-center rounded bg-primary text-xs font-bold text-white">A</span>
+				<img src="/favicon.svg" alt="" class="size-6 shrink-0 rounded" />
 			{/if}
 			<div class="min-w-0 flex-1">
 				<h1 class="truncate font-semibold tracking-tight">{title}</h1>

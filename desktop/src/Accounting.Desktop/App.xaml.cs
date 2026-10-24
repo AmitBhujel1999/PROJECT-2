@@ -58,7 +58,8 @@ public partial class App : Application
         var web = Path.Combine(AppContext.BaseDirectory, "web");
         try
         {
-            _server = ApiServer.Build(new ServerOptions(file, web, [$"http://{(localOnly ? "127.0.0.1" : "0.0.0.0")}:{port}"]));
+            _server = ApiServer.Build(new ServerOptions(file, web, [$"http://{(localOnly ? "127.0.0.1" : "0.0.0.0")}:{port}"],
+                Cloud: Accounting.Server.Cloud.CloudConfig.MeroLekhapal));
             await _server.StartAsync();
         }
         catch (IOException ex) when (ex.InnerException is SocketException or null)

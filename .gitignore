@@ -34,3 +34,4 @@ screenshots/
 
 # Local (non-Docker) Windows install: logs, pids, generated secrets
 .local/
+.firebase/

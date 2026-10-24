@@ -8,11 +8,13 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     var onChangeServer: (() -> Void)?
 
     private let server: String
+    private let start: String
     private var web: WKWebView!
     private var loadedOnce = false
 
-    init(server: String) {
+    init(server: String, start: String = "/dashboard") {
         self.server = server
+        self.start = start
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -62,7 +64,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             web.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
         ])
 
-        if let url = URL(string: server + "/dashboard") {
+        if let url = URL(string: server + start) {
             web.load(URLRequest(url: url, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 15))
         }
     }
@@ -93,8 +95,10 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     // MARK: - Navigation
 
     private func isOurs(_ url: URL) -> Bool {
+        // The online copy (linking this phone) also opens inside the app.
+        if url.host == URL(string: ServerAddress.cloud)?.host { return true }
         guard let base = URL(string: server) else { return false }
-        return url.host == base.host && (url.port ?? 80) == (base.port ?? 80)
+        return url.host == base.host && url.port == base.port
     }
 
     /// PDFs and CSV/Excel exports: the web view cannot save them, so download and share.
@@ -195,6 +199,10 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     // MARK: - Downloads
 
     private func download(_ url: URL) {
+        if url.host == URL(string: ServerAddress.cloud)?.host {
+            alert("Needs the computer", "PDFs and exports are made by the computer. Open this on the shop Wi-Fi.")
+            return
+        }
         let spinner = UIActivityIndicatorView(style: .large)
         spinner.color = .white
         spinner.backgroundColor = UIColor(white: 0, alpha: 0.4)

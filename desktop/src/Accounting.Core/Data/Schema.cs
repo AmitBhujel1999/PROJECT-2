@@ -351,6 +351,27 @@ internal static class Schema
         );
         CREATE INDEX sessions_user ON sessions (user_id);
         """,
+
+        // 5: online copy for phones (Firebase): settings, phones allowed to read it, uploaded pages
+        """
+        CREATE TABLE cloud_state (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+        CREATE TABLE cloud_devices (
+            uid       TEXT PRIMARY KEY,
+            user_id   INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+            name      TEXT NOT NULL DEFAULT '',
+            me        TEXT NOT NULL,
+            perms     TEXT NOT NULL,
+            added_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        );
+        CREATE TABLE cloud_views (
+            id    TEXT PRIMARY KEY,
+            hash  TEXT NOT NULL,
+            parts INTEGER NOT NULL
+        );
+        """,
     ];
 
     private const string Now = "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))";

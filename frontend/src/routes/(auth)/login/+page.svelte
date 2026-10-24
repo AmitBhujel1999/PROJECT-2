@@ -8,6 +8,11 @@
 	import Field from '$lib/components/ui/field.svelte';
 	import Select from '$lib/components/ui/select.svelte';
 
+	import { cloudMode } from '$lib/cloud/cloud';
+
+	// The online copy has no sign-in of its own: phones are linked from the computer.
+	if (cloudMode) goto('/link', { replaceState: true });
+
 	const NEW_COMPANY = '__new__';
 	let companies = $state<{ slug: string; name: string }[]>([]);
 	let current = $state('main');

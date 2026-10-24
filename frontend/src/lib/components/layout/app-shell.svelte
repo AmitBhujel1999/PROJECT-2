@@ -10,6 +10,7 @@
 	import { cn } from '$lib/utils';
 	import { MENUS, filterMenu, nepaliFiscalYear, type MenuLeaf } from './menu';
 	import MenuTree from './menu-tree.svelte';
+	import CloudBanner from './cloud-banner.svelte';
 	import GlobalSearch from './global-search.svelte';
 	import DateSystemDialog from './date-system-dialog.svelte';
 	import BottomNav from '$lib/components/mobile/bottom-nav.svelte';
@@ -109,6 +110,7 @@
 {#if phone.current}
 	<!-- Phone: page header becomes the top bar, navigation lives at the bottom -->
 	<div class="m-shell flex min-h-screen flex-col" class:with-tabs={!entryForm}>
+		<CloudBanner />
 		<main class="workspace print-full flex-1 px-3" {@attach tableLabels}>
 			{#if reportTabs.length}
 				<div class="m-report-tabs no-print">
@@ -183,6 +185,7 @@
 				</DropdownMenu.Portal>
 			</DropdownMenu.Root>
 		</header>
+		<CloudBanner />
 
 		<main class="workspace print-full flex-1 px-3 pb-14 pt-3 sm:px-5 sm:pt-5">
 			<div class="relative z-[1] mx-auto w-full max-w-[1600px]">

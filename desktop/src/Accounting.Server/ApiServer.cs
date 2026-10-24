@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using Accounting.Core;
 using Accounting.Core.Security;
+using Accounting.Server.Cloud;
 using Accounting.Server.Endpoints;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -17,7 +18,8 @@ namespace Accounting.Server;
 /// <param name="WebRoot">Folder with the built web screens (index.html); null serves the API only.</param>
 /// <param name="Urls">Where to listen, e.g. "http://0.0.0.0:4173" for the phone on the same Wi-Fi.</param>
 /// <param name="Today">Business date override (tests).</param>
-public sealed record ServerOptions(string MainCompanyFile, string? WebRoot, string[] Urls, Func<DateOnly>? Today = null);
+/// <param name="Cloud">Firebase project for the online copy for phones; null switches the feature off.</param>
+public sealed record ServerOptions(string MainCompanyFile, string? WebRoot, string[] Urls, Func<DateOnly>? Today = null, CloudConfig? Cloud = null);
 
 /// <summary>Marks an endpoint that works without signing in (login, CSRF cookie, company list, health).</summary>
 public sealed class AnonymousApi;
@@ -43,11 +45,18 @@ public static class ApiServer
         builder.WebHost.UseUrls(options.Urls);
         builder.Logging.ClearProviders();
         builder.Services.AddRouting();
-        var app = builder.Build();
         var companies = new CompanyRegistry(options.MainCompanyFile, options.Today);
+        WebApplication? built = null;
+        CloudSync? cloud = null;
+        if (options.Cloud is { } config)
+        {
+            cloud = new CloudSync(companies, new Firebase(new HttpClient { Timeout = TimeSpan.FromSeconds(60) }, config), () => SelfUrl(built!));
+            builder.Services.AddHostedService(_ => cloud);
+        }
+        var app = built = builder.Build();
         app.Use(ErrorsAsEnvelope);
         app.UseRouting();
-        app.Use((context, next) => Authenticate(context, next, companies));
+        app.Use((context, next) => Authenticate(context, next, companies, cloud));
         var api = app.MapGroup("/api");
         Map(api);
 
@@ -55,6 +64,18 @@ public static class ApiServer
             ServeScreens(app, root);
         return app;
     }
+
+    /// <summary>This server's own address for loopback calls ("http://0.0.0.0:4173" -> "http://127.0.0.1:4173").</summary>
+    private static string SelfUrl(WebApplication app)
+    {
+        var url = app.Urls.First();
+        foreach (var any in new[] { "0.0.0.0", "[::]", "+", "*", "localhost" })
+            url = url.Replace("://" + any + ":", "://127.0.0.1:");
+        return url;
+    }
+
+    /// <summary>The online-copy sync of the server handling this request, or null when it is off.</summary>
+    public static CloudSync? Cloud(HttpContext context) => context.Items[nameof(CloudSync)] as CloudSync;
 
     /// <summary>The companies of the server handling this request.</summary>
     public static CompanyRegistry Companies(HttpContext context) => (CompanyRegistry)context.Items[nameof(CompanyRegistry)]!;
@@ -64,6 +85,7 @@ public static class ApiServer
         api.MapGet("health", () => Api.Ok(new { status = "ok" })).WithMetadata(new AnonymousApi());
         AuthApi.Map(api);
         AdminApi.Map(api);
+        CloudApi.Map(api);
         ProductsApi.Map(api);
         PartiesApi.Map(api);
         BulkApi.Map(api);
@@ -131,7 +153,7 @@ public static class ApiServer
             (_, f) => DateTime.UtcNow - f.Since > TimeSpan.FromMinutes(5) ? (1, DateTime.UtcNow) : (f.Count + 1, f.Since));
     }
 
-    private static async Task Authenticate(HttpContext context, Func<Task> next, CompanyRegistry companies)
+    private static async Task Authenticate(HttpContext context, Func<Task> next, CompanyRegistry companies, CloudSync? cloud)
     {
         if (!context.Request.Path.StartsWithSegments("/api"))
         {
@@ -145,9 +167,20 @@ public static class ApiServer
         User? user = null;
         if (context.Request.Cookies[SessionCookie] is { Length: > 0 } token)
             user = db.Read(tx => UserService.SessionUser(tx, token));
+        else if (cloud is not null && context.Request.Headers["X-Internal-Key"].ToString() is { Length: > 0 } key
+                 && context.Connection.RemoteIpAddress is { } ip && System.Net.IPAddress.IsLoopback(ip)
+                 && CryptographicOperations.FixedTimeEquals(System.Text.Encoding.UTF8.GetBytes(key), System.Text.Encoding.UTF8.GetBytes(CloudSync.InternalKey)))
+        {
+            // The online-copy sync reading pages as the company's first administrator.
+            user = db.Read(tx => tx.Scalar<long?>("SELECT id FROM users WHERE role = 'ADMIN' AND is_active = 1 ORDER BY id LIMIT 1") is { } adminId
+                ? UserService.Get(tx, adminId) : null);
+            context.Items["internal"] = true;
+        }
         context.Items[nameof(Api)] = new Api(context, db, user);
         context.Items["company"] = slug;
         context.Items[nameof(CompanyRegistry)] = companies;
+        if (cloud is not null)
+            context.Items[nameof(CloudSync)] = cloud;
 
         var anonymous = context.GetEndpoint()?.Metadata.GetMetadata<AnonymousApi>() is not null;
         if (!HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method) && !HttpMethods.IsOptions(context.Request.Method))

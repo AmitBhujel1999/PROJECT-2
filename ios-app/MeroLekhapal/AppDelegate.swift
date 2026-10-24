@@ -18,6 +18,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
 
 /// Saved server address, e.g. "http://192.168.1.84:4173".
 enum ServerAddress {
+    /// Online copy of the books (Firebase), for phones away from the shop Wi-Fi.
+    static let cloud = "https://mero-lekhapal.web.app"
+
     private static let key = "server"
 
     static var saved: String? {
@@ -58,11 +61,12 @@ final class RootViewController: UIViewController {
             ServerAddress.saved = address
             self?.showWeb(address)
         }
+        setup.onOnline = { [weak self] in self?.showWeb(ServerAddress.cloud, start: "/link") }
         show(setup)
     }
 
-    func showWeb(_ server: String) {
-        let web = WebViewController(server: server)
+    func showWeb(_ server: String, start: String = "/dashboard") {
+        let web = WebViewController(server: server, start: start)
         web.onProblem = { [weak self] message in self?.showSetup(error: message) }
         web.onChangeServer = { [weak self] in self?.showSetup(error: nil) }
         show(web)

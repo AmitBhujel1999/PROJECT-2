@@ -1,0 +1,36 @@
+rules_version = '2';
+
+// Mero Lekhapal online copy. The PC program (anonymous account = book owner) uploads pages;
+// phones paired on the local network are members and may read the pages their role allows.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function book(b) {
+      return get(/databases/$(database)/documents/books/$(b)).data;
+    }
+    function isOwner(b) {
+      return request.auth != null && book(b).owner == request.auth.uid;
+    }
+    function isMember(b) {
+      return request.auth != null && request.auth.uid in book(b).members;
+    }
+
+    match /books/{b} {
+      allow get: if request.auth != null
+        && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.members);
+      allow create: if request.auth != null && request.resource.data.owner == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.owner == request.auth.uid;
+
+      match /views/{view} {
+        allow get: if isOwner(b)
+          || (isMember(b) && (resource.data.perm == '' || resource.data.perm in book(b).members[request.auth.uid].perms));
+        allow write: if isOwner(b);
+      }
+
+      // A phone asking to join with the one-time code the PC showed (the code is the document id).
+      match /pairing/{code} {
+        allow create: if request.auth != null && request.resource.data.uid == request.auth.uid && code.size() == 32;
+        allow get, list, delete: if isOwner(b);
+      }
+    }
+  }
+}

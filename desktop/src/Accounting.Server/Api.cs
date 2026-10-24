@@ -55,7 +55,9 @@ public sealed class Api(HttpContext http, Database db, User? user)
 
     public bool? Bool(string name) => Q(name)?.ToLowerInvariant() switch { null => null, "true" or "1" => true, "false" or "0" => false, _ => null };
 
-    public PageRequest Page => new((int)(Int("page") ?? 1), (int?)Int("page_size"));
+    public PageRequest Page => Http.Items.ContainsKey("internal") && Q("page_size") == "all"
+        ? new PageRequest(1, null, All: true)
+        : new((int)(Int("page") ?? 1), (int?)Int("page_size"));
 
     // ------------------------------------------------------------------ JSON body
 

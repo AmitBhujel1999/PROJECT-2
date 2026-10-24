@@ -6,6 +6,8 @@
  * - Unwraps the {success, data, message} envelope and throws ApiError otherwise.
  */
 
+import { cloudMode, cloudRequest } from '$lib/cloud/cloud';
+
 export class ApiError extends Error {
 	constructor(
 		public status: number,
@@ -62,6 +64,15 @@ export async function request<T>(
 	path: string,
 	options: { query?: Query; body?: unknown; signal?: AbortSignal } = {}
 ): Promise<Envelope<T>> {
+	if (cloudMode) {
+		// Opened from the online copy (phone away from the shop): read-only pages from Firebase.
+		try {
+			return await cloudRequest<T>(method, path, options.query);
+		} catch (err) {
+			if (err instanceof ApiError && err.status === 401 && unauthorizedHandler) unauthorizedHandler();
+			throw err;
+		}
+	}
 	const headers: Record<string, string> = { Accept: 'application/json' };
 	if (UNSAFE.has(method)) {
 		await ensureCsrf();
@@ -105,6 +116,7 @@ export async function request<T>(
 
 /** POST a file (multipart form). Same envelope and errors as ``request``. */
 async function upload<T>(path: string, form: FormData): Promise<Envelope<T>> {
+	if (cloudMode) return cloudRequest<T>('POST', path);
 	await ensureCsrf();
 	let response: Response;
 	try {
