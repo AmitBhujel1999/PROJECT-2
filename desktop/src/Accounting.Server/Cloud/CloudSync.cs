@@ -29,11 +29,21 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
     private static readonly TimeSpan FullRefresh = TimeSpan.FromHours(6);
     private const int PartChars = 900_000;
 
-    private sealed record Pairing(string Slug, long UserId, string Me, string[] Perms, DateTime ExpiresUtc);
+    /// <param name="Short">Code to type on the phone ("K7P2-M9QX"), published as codes/{short} -> book + code.</param>
+    private sealed record Pairing(string Slug, long UserId, string Me, string[] Perms, DateTime ExpiresUtc, string Short, bool Published = false);
+
+    /// <summary>Pairings a phone completed (code -> when), so the PC screen can say "Linked".</summary>
+    private readonly ConcurrentDictionary<string, DateTime> _linked = new();
+
+    /// <summary>Typed codes published in Firebase, to remove when used or expired (short -> expiry).</summary>
+    private readonly ConcurrentDictionary<string, DateTime> _published = new();
 
     private readonly ConcurrentDictionary<string, Pairing> _pairings = new();
     private readonly ConcurrentDictionary<string, FirebaseSession> _sessions = new();
     private readonly ConcurrentDictionary<string, bool> _forced = new();
+    private readonly ConcurrentDictionary<string, bool> _bookReady = new();
+    /// <summary>Wakes the background loop early (a phone code to publish, "Upload now").</summary>
+    private readonly SemaphoreSlim _wake = new(0);
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
     private readonly HttpClient _self = new() { Timeout = TimeSpan.FromSeconds(60) };
 
@@ -59,13 +69,17 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
         SetState(db, "enabled", enabled ? "1" : "0");
         SetState(db, "last_error", null);
         if (enabled)
-            _forced[slug] = true;
+            SyncSoon(slug);
     }
 
-    public void SyncSoon(string slug) => _forced[slug] = true;
+    public void SyncSoon(string slug)
+    {
+        _forced[slug] = true;
+        _wake.Release();
+    }
 
     /// <summary>A one-time code (10 minutes) the phone of <paramref name="user"/> uses to join.</summary>
-    public (string Code, string Url, DateTime ExpiresUtc) StartPairing(string slug, User user, string me, IEnumerable<string> perms)
+    public (string Code, string Short, string Url, DateTime ExpiresUtc) StartPairing(string slug, User user, string me, IEnumerable<string> perms)
     {
         var db = companies.Get(slug)!;
         var state = State(db);
@@ -76,29 +90,37 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
             _pairings.TryRemove(old, out _);
         var code = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
         var expires = DateTime.UtcNow.AddMinutes(10);
-        _pairings[code] = new Pairing(slug, user.Id, me, perms.ToArray(), expires);
-        return (code, $"{firebase.Config.AppUrl}/link?b={book}&c={code}", expires);
+        // Easy to type: no 0/O, 1/I/L.
+        const string alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+        var letters = RandomNumberGenerator.GetBytes(8).Select(b => alphabet[b % alphabet.Length]).ToArray();
+        var shortCode = new string(letters, 0, 4) + "-" + new string(letters, 4, 4);
+        _pairings[code] = new Pairing(slug, user.Id, me, perms.ToArray(), expires, shortCode);
+        _wake.Release();
+        return (code, shortCode, $"{firebase.Config.AppUrl}/link?b={book}&c={code}", expires);
     }
+
+    /// <summary>True once a phone has used this pairing.</summary>
+    public bool IsLinked(string code) => _linked.ContainsKey(code);
 
     /// <summary>Allow or stop sales and receipts made on phones.</summary>
     public void SetPhoneEntry(string slug, bool allowed)
     {
         SetState(companies.Get(slug)!, "entry", allowed ? "1" : "0");
-        _forced[slug] = true;
+        SyncSoon(slug);
     }
 
     /// <summary>Book a phone sale/receipt that failed before (after fixing the cause, e.g. stock).</summary>
     public void Retry(string slug, string number)
     {
         companies.Get(slug)!.Write(tx => tx.Execute("UPDATE cloud_inbox SET status = 'new', message = '' WHERE number = @number AND status = 'failed'", new { number }));
-        _forced[slug] = true;
+        SyncSoon(slug);
     }
 
     public void RemoveDevice(string slug, string uid)
     {
         var db = companies.Get(slug)!;
         db.Write(tx => tx.Execute("DELETE FROM cloud_devices WHERE uid = @uid", new { uid }));
-        _forced[slug] = true;
+        SyncSoon(slug);
     }
 
     // ------------------------------------------------------------------ background loop
@@ -124,7 +146,7 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
                 }
             }
             var waiting = _pairings.Values.Any(p => p.ExpiresUtc > DateTime.UtcNow) || !_forced.IsEmpty;
-            await Task.Delay(waiting ? TimeSpan.FromSeconds(3) : TimeSpan.FromSeconds(15), ct);
+            await _wake.WaitAsync(waiting ? TimeSpan.FromSeconds(3) : TimeSpan.FromSeconds(15), ct);
         }
     }
 
@@ -144,6 +166,13 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
                 return;
             var session = await SessionAsync(slug, db, state, ct);
             var book = state.GetValueOrDefault("book") ?? NewBook(db);
+
+            // The book must exist (us as owner) before anything under it can be read or written.
+            if (!_bookReady.ContainsKey($"{slug}/{book}"))
+            {
+                await firebase.CommitAsync(session.IdToken, [BookDoc(db, book, session.Uid)], ct);
+                _bookReady[$"{slug}/{book}"] = true;
+            }
 
             var joined = _pairings.Any(p => p.Value.Slug == slug && p.Value.ExpiresUtc > DateTime.UtcNow)
                 && await AcceptPairingsAsync(slug, db, book, session, ct);
@@ -200,8 +229,25 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
 
     private async Task<bool> AcceptPairingsAsync(string slug, Database db, string book, FirebaseSession session, CancellationToken ct)
     {
-        // The book document must exist (with us as owner) before phones can ask to join.
-        await firebase.CommitAsync(session.IdToken, [BookDoc(db, book, session.Uid)], ct);
+        // The book document must exist (with us as owner) before phones can ask to join; typed codes
+        // are published so a phone can find the book from the code alone.
+        var publish = new List<JsonObject> { BookDoc(db, book, session.Uid) };
+        foreach (var (code, p) in _pairings.Where(p => p.Value.Slug == slug && !p.Value.Published && p.Value.ExpiresUtc > DateTime.UtcNow).ToList())
+        {
+            publish.Add(firebase.Update($"codes/{p.Short}", new JsonObject
+            {
+                ["owner"] = Firebase.Str(session.Uid), ["book"] = Firebase.Str(book), ["code"] = Firebase.Str(code),
+                ["expires"] = Firebase.Time(p.ExpiresUtc),
+            }));
+            _pairings[code] = p with { Published = true };
+            _published[p.Short] = p.ExpiresUtc;
+        }
+        foreach (var (shortCode, _) in _published.Where(x => x.Value < DateTime.UtcNow).ToList())
+        {
+            publish.Add(firebase.Delete($"codes/{shortCode}"));
+            _published.TryRemove(shortCode, out _);
+        }
+        await firebase.CommitAsync(session.IdToken, publish, ct);
         var requests = await firebase.ListAsync(session.IdToken, $"books/{book}/pairing", ct);
         var joined = false;
         var writes = new List<JsonObject>();
@@ -214,6 +260,9 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
             writes.Add(firebase.Delete($"books/{book}/pairing/{code}"));
             if (uid is null || !_pairings.TryRemove(code, out var pairing) || pairing.Slug != slug || pairing.ExpiresUtc < DateTime.UtcNow)
                 continue;
+            _linked[code] = DateTime.UtcNow;
+            if (_published.TryRemove(pairing.Short, out _))
+                writes.Add(firebase.Delete($"codes/{pairing.Short}"));
             db.Write(tx =>
             {
                 // Each phone gets its own invoice series: M1-000001, M2-000001, ...

@@ -63,6 +63,37 @@
 		}
 	}
 
+	let linkCode = $state<{ code: string; short_code: string; expires_at: string } | null>(null);
+	let linked = $state(false);
+	let linkTimer: ReturnType<typeof setInterval> | undefined;
+
+	async function makeCode() {
+		try {
+			const res = await api.post<{ code: string; short_code: string; expires_at: string }>('cloud/pair/');
+			linkCode = res.data;
+			linked = false;
+			clearInterval(linkTimer);
+			linkTimer = setInterval(async () => {
+				if (!linkCode) return;
+				if (new Date(linkCode.expires_at).getTime() < Date.now()) {
+					linkCode = null;
+					clearInterval(linkTimer);
+					return;
+				}
+				const r = await api.get<{ linked: boolean }>(`cloud/pair/${linkCode.code}/`).catch(() => null);
+				if (r?.linked) {
+					linked = true;
+					linkCode = null;
+					clearInterval(linkTimer);
+					load();
+				}
+			}, 3000);
+		} catch (err) {
+			toast.error(err instanceof ApiError ? err.message : 'Could not make a code.');
+		}
+	}
+	onMount(() => () => clearInterval(linkTimer));
+
 	const toggle = () => run(() => api.post<Status>('cloud/enable/', { enabled: !status?.enabled }));
 	const syncNow = () => run(() => api.post<Status>('cloud/sync/'));
 	const toggleEntry = () => run(() => api.post<Status>('cloud/entry/', { enabled: !status?.phone_entry }));
@@ -153,12 +184,25 @@
 
 		<Card>
 			<div class="grid gap-3 p-5">
-				<div>
-					<h2 class="font-semibold">Linked phones</h2>
-					<p class="text-sm text-muted-foreground">
-						To link a phone: connect it to this Wi-Fi, open Mero Lekhapal on it, sign in, then tap <b>More → Use this phone anywhere</b>.
-					</p>
+				<div class="flex items-start justify-between gap-3">
+					<div>
+						<h2 class="font-semibold">Linked phones</h2>
+						<p class="text-sm text-muted-foreground">
+							On the phone open <b>{status.app_url.replace('https://', '')}</b> (or its Home Screen icon), then type the code from <b>Link a phone</b>.
+							The phone sees what your user may see.
+						</p>
+					</div>
+					{#if status.enabled}<Button onclick={makeCode} disabled={busy}>Link a phone</Button>{/if}
 				</div>
+				{#if linkCode}
+					<div class="rounded-lg border-2 border-primary/40 bg-primary/5 p-4 text-center">
+						<div class="text-xs text-muted-foreground">Type this code on the phone</div>
+						<div class="my-1 font-mono text-3xl font-bold tracking-[0.2em]" data-testid="link-code">{linkCode.short_code}</div>
+						<div class="text-xs text-muted-foreground">Works for 10 minutes · waiting for the phone…</div>
+					</div>
+				{:else if linked}
+					<p class="rounded-md bg-green-50 px-3 py-2 text-sm text-green-800">Phone linked.</p>
+				{/if}
 				{#if status.devices.length}
 					<ul class="divide-y rounded-md border">
 						{#each status.devices as d (d.uid)}

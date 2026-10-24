@@ -318,9 +318,27 @@ function filterList(data: any, query: Query): any {
 
 // ---------------------------------------------------------------- pairing (the /link page)
 
-/** Ask to join the book with the one-time code from the PC; resolves when the PC accepted. */
-export async function pair(bookId: string, code: string, device: string): Promise<void> {
+/** Link with the code typed from the PC screen ("K7P2-M9QX"); resolves when the PC accepted. */
+export async function pairWithCode(typed: string, device: string): Promise<void> {
+	const short = typed.toUpperCase().replace(/[^A-Z0-9]/g, '');
+	if (short.length !== 8) throw new ApiError(400, 'BAD_CODE', 'Type the 8 letters and numbers shown on the computer.');
 	const me = await signUp();
+	// The PC publishes a new code within a few seconds of showing it: try for a little while.
+	let r: Response | null = null;
+	for (let i = 0; i < 8; i++) {
+		r = await fetch(`${DOCS}/codes/${short.slice(0, 4)}-${short.slice(4)}`, { headers: { Authorization: `Bearer ${me.id}` } }).catch(() => null);
+		if (!r) throw new ApiError(0, 'NETWORK_ERROR', 'No internet connection.');
+		if (r.ok) break;
+		await new Promise((res) => setTimeout(res, 2500));
+	}
+	if (!r?.ok) throw new ApiError(404, 'BAD_CODE', 'This code is wrong or has expired, or the computer is offline. Make a new code on the computer.');
+	const f = (await r.json()).fields ?? {};
+	await pair(f.book?.stringValue ?? '', f.code?.stringValue ?? '', device, me);
+}
+
+/** Ask to join the book with the one-time code from the PC; resolves when the PC accepted. */
+export async function pair(bookId: string, code: string, device: string, account?: { uid: string; refresh: string; id: string }): Promise<void> {
+	const me = account ?? (await signUp());
 	const r = await fetch(`${DOCS}/books/${bookId}/pairing?documentId=${code}`, {
 		method: 'POST',
 		headers: { Authorization: `Bearer ${me.id}`, 'Content-Type': 'application/json' },

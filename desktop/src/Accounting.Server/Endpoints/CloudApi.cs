@@ -111,8 +111,15 @@ public static class CloudApi
             var a = Api.Of(h);
             var user = a.User!;
             var me = JsonSerializer.Serialize(AuthApi.UserJson(user), Json.Options);
-            var (code, url, expires) = Sync(h).StartPairing((string)h.Items["company"]!, user, me, Permissions.For(user.ToActor()));
-            return Api.Ok(new { code, url, expires_at = expires.ToString("O") });
+            var (code, shortCode, url, expires) = Sync(h).StartPairing((string)h.Items["company"]!, user, me, Permissions.For(user.ToActor()));
+            return Api.Ok(new { code, short_code = shortCode, url, expires_at = expires.ToString("O") });
+        });
+
+        // The PC screen showing a typed code asks whether the phone has used it yet.
+        api.MapGet("cloud/pair/{code}", (HttpContext h, string code) =>
+        {
+            Api.Of(h);
+            return Api.Ok(new { linked = Sync(h).IsLinked(code) });
         });
     }
 }

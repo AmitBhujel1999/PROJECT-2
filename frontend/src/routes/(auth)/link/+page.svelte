@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { ApiError } from '$lib/api/client';
-	import { cloudLink, cloudMode, loadBook, pair, saveLink, type Book } from '$lib/cloud/cloud';
+	import { cloudLink, cloudMode, loadBook, pair, pairWithCode, saveLink, type Book } from '$lib/cloud/cloud';
 	import { auth } from '$lib/stores/auth.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 
@@ -14,6 +14,20 @@
 	let stage = $state<'checking' | 'linking' | 'linked' | 'unlinked'>('checking');
 	let book = $state<Book | null>(null);
 	let error = $state('');
+	let typed = $state('');
+
+	async function linkWithCode(e: SubmitEvent) {
+		e.preventDefault();
+		error = '';
+		stage = 'linking';
+		try {
+			await pairWithCode(typed, deviceName());
+			await open();
+		} catch (err) {
+			error = err instanceof ApiError ? err.message : 'Linking failed. Try again.';
+			stage = 'unlinked';
+		}
+	}
 
 	function deviceName(): string {
 		const ua = navigator.userAgent;
@@ -90,12 +104,22 @@
 		<Button variant="outline" class="w-full" onclick={unlink}>Unlink this phone</Button>
 	</div>
 {:else}
-	<h2 class="mb-1 text-base font-semibold">See your books anywhere</h2>
+	<h2 class="mb-1 text-base font-semibold">Link this phone</h2>
+	<p class="mb-3 text-sm text-muted-foreground">
+		On the computer, open Mero Lekhapal → <b>Administration → Phone Anywhere</b> → <b>Link a phone</b>, then type the code it shows.
+	</p>
 	{#if error}<p class="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{error}</p>{/if}
-	<ol class="grid list-decimal gap-2 pl-5 text-sm text-muted-foreground">
-		<li>Connect this phone to the same Wi-Fi as the computer running Mero Lekhapal.</li>
-		<li>Open Mero Lekhapal on the phone (the computer's address) and sign in.</li>
-		<li>Tap <b>More → Use this phone anywhere</b>.</li>
-	</ol>
-	<p class="mt-3 text-xs text-muted-foreground">An administrator must first switch on <b>Settings → Phone Anywhere</b> on the computer.</p>
+	<form class="grid gap-3" onsubmit={linkWithCode}>
+		<input
+			class="h-12 w-full rounded-md border bg-background px-3 text-center font-mono text-xl tracking-[0.3em] uppercase"
+			placeholder="XXXX-XXXX"
+			autocomplete="off"
+			autocapitalize="characters"
+			maxlength="9"
+			bind:value={typed}
+			aria-label="Code from the computer"
+		/>
+		<Button type="submit" class="w-full" disabled={typed.replace(/[^a-z0-9]/gi, '').length !== 8}>Link</Button>
+	</form>
+	<p class="mt-3 text-xs text-muted-foreground">The computer must be on, with Mero Lekhapal open and connected to the internet, while you link.</p>
 {/if}
