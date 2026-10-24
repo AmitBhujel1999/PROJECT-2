@@ -72,6 +72,10 @@
 	body {
 		overscroll-behavior: none;
 	}
+	/* No pinch zoom on phones (Safari ignores user-scalable=no); scrolling still works. */
+	html {
+		touch-action: pan-x pan-y;
+	}
 	body {
 		@apply bg-muted/40 text-foreground antialiased;
 		font-feature-settings: 'tnum' 1;

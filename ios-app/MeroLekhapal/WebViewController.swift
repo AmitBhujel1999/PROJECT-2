@@ -47,6 +47,10 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         web.isOpaque = false
         web.backgroundColor = UIColor(named: "Navy")
         web.scrollView.bounces = false
+        // No pinch zoom (the page also asks for this; iOS may ignore the page).
+        web.scrollView.pinchGestureRecognizer?.isEnabled = false
+        web.scrollView.minimumZoomScale = 1
+        web.scrollView.maximumZoomScale = 1
         web.scrollView.contentInsetAdjustmentBehavior = .never
         web.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(web)
@@ -143,6 +147,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         loadedOnce = true
+        webView.scrollView.pinchGestureRecognizer?.isEnabled = false
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {

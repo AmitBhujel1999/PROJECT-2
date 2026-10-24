@@ -51,6 +51,9 @@ public sealed class WebWindow : Window
         s.IsStatusBarEnabled = false;
         s.IsPasswordAutosaveEnabled = false;
         s.IsGeneralAutofillEnabled = false;
+        // App feel: no Ctrl+wheel / Ctrl+plus or touchpad pinch zoom.
+        s.IsZoomControlEnabled = false;
+        s.IsPinchZoomEnabled = false;
 #if !DEBUG
         s.AreDevToolsEnabled = false;
 #endif
