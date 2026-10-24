@@ -22,8 +22,8 @@
 	);
 	const company = $derived(leaves(filterMenu(MENUS[0].items, (p) => auth.can(p))).filter((l) => l.label !== 'Dashboard'));
 
-	// Present only inside the Android app (MainActivity's JavaScript bridge).
-	const androidApp = (globalThis as { AccountingApp?: { changeServer(): void; server(): string } }).AccountingApp;
+	// Present only inside the phone apps (Android MainActivity / iPhone WebViewController bridge).
+	const phoneApp = (globalThis as { AccountingApp?: { changeServer(): void; server(): string } }).AccountingApp;
 
 	async function pick(leaf: MenuLeaf) {
 		if (leaf.action === 'logout') {
@@ -64,10 +64,10 @@
 					{/if}
 				</li>
 			{/each}
-			{#if androidApp}
+			{#if phoneApp}
 				<li>
-					<button type="button" class="w-full px-3 py-2.5 text-left text-sm" onclick={() => androidApp.changeServer()}>
-						Change server address<span class="block text-[11px] text-muted-foreground">{androidApp.server()}</span>
+					<button type="button" class="w-full px-3 py-2.5 text-left text-sm" onclick={() => phoneApp.changeServer()}>
+						Change server address<span class="block text-[11px] text-muted-foreground">{phoneApp.server()}</span>
 					</button>
 				</li>
 			{/if}

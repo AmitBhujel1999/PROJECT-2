@@ -77,7 +77,9 @@ public partial class App : Application
 
         try
         {
-            WebEnvironment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(DataFolder, "WebView2"));
+            // No touchpad "rubber band" scrolling past the edges of the screens.
+            var options = new CoreWebView2EnvironmentOptions("--disable-features=ElasticOverscroll");
+            WebEnvironment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(DataFolder, "WebView2"), options);
         }
         catch (WebView2RuntimeNotFoundException)
         {

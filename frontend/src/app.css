@@ -67,6 +67,11 @@
 	html {
 		-webkit-text-size-adjust: 100%;
 	}
+	/* App feel: no rubber-band scrolling past the top or bottom of the screen. */
+	html,
+	body {
+		overscroll-behavior: none;
+	}
 	body {
 		@apply bg-muted/40 text-foreground antialiased;
 		font-feature-settings: 'tnum' 1;

@@ -1,0 +1,37 @@
+# XcodeGen spec: the GitHub workflow runs `xcodegen generate` to make the Xcode project.
+name: MeroLekhapal
+options:
+  bundleIdPrefix: com.ameet
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  MeroLekhapal:
+    type: application
+    platform: iOS
+    sources: [MeroLekhapal]
+    scheme: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ameet.merolekhapal
+        PRODUCT_NAME: MeroLekhapal
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+    info:
+      path: MeroLekhapal/Info.plist
+      properties:
+        CFBundleDisplayName: Mero Lekhapal
+        UILaunchScreen:
+          UIColorName: Navy
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UIViewControllerBasedStatusBarAppearance: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        # The program on the PC speaks plain HTTP on the local network.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
+        NSLocalNetworkUsageDescription: Mero Lekhapal connects to the Mero Lekhapal program on your computer over Wi-Fi.
+        ITSAppUsesNonExemptEncryption: false

@@ -76,6 +76,16 @@ public sealed class ServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SetupErrorsPointAtTheAdminFields()
+    {
+        await Get("/api/auth/csrf/");
+        var bad = await Post("/api/companies/", new { name = "Himal", setup = true, admin_username = "admin", admin_password = "12345" },
+            HttpStatusCode.BadRequest);
+        Assert.True(bad.GetProperty("error").GetProperty("details").TryGetProperty("admin_password", out _));
+        Assert.True((await Get("/api/companies/")).GetProperty("data").GetProperty("setup").GetBoolean());
+    }
+
+    [Fact]
     public async Task ApiNeedsSignInAndCsrfToken()
     {
         var anonymous = await Get("/api/products/", HttpStatusCode.Unauthorized);

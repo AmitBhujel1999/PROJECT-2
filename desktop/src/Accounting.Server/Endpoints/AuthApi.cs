@@ -183,7 +183,16 @@ public static class AuthApi
     /// <summary>First administrator and business details of a new, empty company file.</summary>
     private static User SetUp(Tx tx, JsonElement b, string name, string adminUsername, string adminPassword)
     {
-        var admin = UserService.CreateFirstAdmin(tx, adminUsername, adminPassword, b.Str("admin_name") ?? "");
+        User admin;
+        try
+        {
+            admin = UserService.CreateFirstAdmin(tx, adminUsername, adminPassword, b.Str("admin_name") ?? "");
+        }
+        catch (ValidationError e) when (e.Field is "username" or "password" or "first_name")
+        {
+            // Point the error at the field on the company form.
+            throw new ValidationError(e.Field == "first_name" ? "admin_name" : "admin_" + e.Field, e.Message);
+        }
         if (b.Str("email") is { Length: > 0 } email)
             tx.Execute("UPDATE users SET email = @email WHERE id = @id", new { email, id = admin.Id });
         var settings = BusinessSettings.Get(tx);
