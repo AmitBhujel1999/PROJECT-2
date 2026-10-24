@@ -15,7 +15,7 @@
 	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
 	import AllocationTable from './allocation-table.svelte';
 
-	let { kind, id }: { kind: PayKind; id: number } = $props();
+	let { kind, id }: { kind: PayKind; id: number | string } = $props();
 	// svelte-ignore state_referenced_locally
 	const side = PAY_SIDES[kind];
 	const client = useQueryClient();
@@ -82,14 +82,24 @@
 	<PageHeader title="{side.label} {r.number}" description="{r.party_name} · {fmtDate(r.date)}" back={{ href: side.route, label: side.title }}>
 		{#snippet actions()}
 			<StatusBadge status={r.status} />
+			{#if !r.pending_status}
 			<Button variant="outline" href="/api/{side.api}/{id}/pdf/" download><FileDown />PDF</Button>
 			{#if canEdit && Number(r.unallocated_amount) > 0}
 				<Button variant="outline" onclick={autoAllocate}><Wand2 />Auto-allocate</Button>
 				<Button onclick={openAllocate} data-testid="allocate"><Link2 />Allocate</Button>
 			{/if}
 			{#if r.status === 'ACTIVE' && auth.can(side.cancelPerm)}<Button variant="destructive" onclick={() => (cancelOpen = true)}><Ban />Cancel</Button>{/if}
+			{/if}
 		{/snippet}
 	</PageHeader>
+
+	{#if r.pending_status}
+		<p class="mb-4 rounded-md border px-4 py-2 text-sm {r.pending_status === 'failed' ? 'border-red-200 bg-red-50 text-red-800' : r.pending_status === 'booked' ? 'border-green-200 bg-green-50 text-green-800' : 'border-amber-200 bg-amber-50 text-amber-900'}">
+			{#if r.pending_status === 'waiting'}Saved on this phone. It is booked in the books when the computer is next online; the number does not change.
+			{:else if r.pending_status === 'booked'}Booked on the computer.
+			{:else}Could not be booked on the computer: {r.pending_message} Ask the shop to fix it and press Try again under Phone Anywhere.{/if}
+		</p>
+	{/if}
 
 	{#if r.status === 'CANCELLED'}
 		<p class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">Cancelled {dateTime(r.cancelled_at)} — {r.cancel_reason}. Allocations were released.</p>

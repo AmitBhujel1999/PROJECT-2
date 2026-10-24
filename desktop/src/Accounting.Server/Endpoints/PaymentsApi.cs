@@ -135,7 +135,8 @@ public static class PaymentsApi
                     throw new ValidationError("payment_method", $"\"{method}\" is not a valid choice.");
                 var allocations = b.List("allocations").Select(x => new AllocationRequest(x.ReqLong("document"), x.ReqDec("amount"))).ToList();
                 var payment = a.Write((tx, actor) => PartyAccounts.CreatePayment(tx, actor, cfg, b.ReqLong("party"), b.ReqDate("date"), amount, method,
-                    b.Long("account"), b.Str("reference_number") ?? "", b.Str("notes") ?? "", allocations.Count > 0 ? allocations : null, b.Bool("auto_allocate") ?? false));
+                    b.Long("account"), b.Str("reference_number") ?? "", b.Str("notes") ?? "", allocations.Count > 0 ? allocations : null, b.Bool("auto_allocate") ?? false,
+                    h.Items.ContainsKey("internal") ? b.Str("number") : null));
                 return Api.Created(a.Read(tx => PaymentJson(tx, cfg, payment, true)), $"{label} {payment.Number} recorded successfully.");
             });
 

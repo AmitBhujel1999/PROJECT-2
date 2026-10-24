@@ -76,6 +76,7 @@ public sealed class Firebase(HttpClient http, CloudConfig config)
 
     public static JsonObject Str(string value) => new() { ["stringValue"] = value };
     public static JsonObject Int(long value) => new() { ["integerValue"] = value.ToString() };
+    public static JsonObject Bool(bool value) => new() { ["booleanValue"] = value };
     public static JsonObject Time(DateTime utc) => new() { ["timestampValue"] = utc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") };
     public static JsonObject Array(IEnumerable<string> values) =>
         new() { ["arrayValue"] = new JsonObject { ["values"] = new JsonArray([.. values.Select(v => (JsonNode)Str(v))]) } };

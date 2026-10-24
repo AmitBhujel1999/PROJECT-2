@@ -173,6 +173,76 @@ public sealed class CloudTests : IAsyncLifetime
         Assert.Empty(_docs[$"books/{Book}"]["members"]!["mapValue"]!["fields"]!.AsObject());
     }
 
+    private static JsonObject Str(string v) => new() { ["stringValue"] = v };
+
+    private async Task<string> LinkPhoneAsync()
+    {
+        await Post("/api/cloud/enable/", new { enabled = true });
+        await Sync.TickAsync("main", CancellationToken.None);
+        var code = (await Post("/api/cloud/pair/", new { })).GetProperty("data").GetProperty("code").GetString()!;
+        _docs[$"books/{Book}/pairing/{code}"] = new JsonObject { ["uid"] = Str("phone-1"), ["device"] = Str("iPhone") };
+        await Sync.TickAsync("main", CancellationToken.None);
+        return _docs[$"books/{Book}"]["members"]!["mapValue"]!["fields"]!["phone-1"]!["mapValue"]!["fields"]!["prefix"]!["stringValue"]!.GetValue<string>();
+    }
+
+    private void PhoneSends(string number, string kind, object body) =>
+        _docs[$"books/{Book}/outbox/{number}"] = new JsonObject
+        {
+            ["uid"] = Str("phone-1"), ["kind"] = Str(kind), ["body"] = Str(JsonSerializer.Serialize(body)), ["device"] = Str("iPhone"),
+        };
+
+    private string Result(string number, string field) => _docs[$"books/{Book}/results/{number}"][field]!.AsObject().First().Value!.ToString();
+
+    [Fact]
+    public async Task PhoneSalesAreBookedWithThePhonesOwnNumbers()
+    {
+        var prefix = await LinkPhoneAsync();
+        Assert.Equal("M1", prefix);
+        var customer = (await Get("/api/customers/")).GetProperty("data").GetProperty("results")[0].GetProperty("id").GetInt64();
+        var product = (await Get("/api/products/")).GetProperty("data").GetProperty("results")[0];
+        var date = DateTime.Today.ToString("yyyy-MM-dd");
+
+        PhoneSends("M1-000001", "sale", new { party = customer, date, items = new[] { new { product = product.GetProperty("id").GetInt64(), quantity = "1", unit_price = (string?)null } } });
+        PhoneSends("M1-000002", "sale", new { party = customer, date, items = new[] { new { product = product.GetProperty("id").GetInt64(), quantity = "999999", unit_price = (string?)null } } });
+        PhoneSends("M1-R-000001", "receipt", new { party = customer, date, amount = "10", auto_allocate = true });
+        await Sync.TickAsync("main", CancellationToken.None);
+
+        // Booked with the phone's number; the phone learns the result; nothing is left in the outbox.
+        Assert.Equal("booked", Result("M1-000001", "status"));
+        var sale = (await Get($"/api/sales/{Result("M1-000001", "id")}/")).GetProperty("data");
+        Assert.Equal("M1-000001", sale.GetProperty("invoice_number").GetString());
+        Assert.Equal("booked", Result("M1-R-000001", "status"));
+        Assert.Equal("M1-R-000001", (await Get($"/api/customer-receipts/{Result("M1-R-000001", "id")}/")).GetProperty("data").GetProperty("number").GetString());
+        Assert.DoesNotContain(_docs.Keys, k => k.Contains("/outbox/"));
+
+        // Not enough stock here: the bill keeps its number, waits as failed, and can be tried again.
+        Assert.Equal("failed", Result("M1-000002", "status"));
+        Assert.Contains("Insufficient stock", Result("M1-000002", "message"));
+        var inbox = (await Get("/api/cloud/")).GetProperty("data").GetProperty("inbox");
+        Assert.Contains(inbox.EnumerateArray(), i => i.GetProperty("number").GetString() == "M1-000002" && i.GetProperty("status").GetString() == "failed");
+
+        // The phone's next numbers come after everything received (the failed one is not reused).
+        var me = _docs[$"books/{Book}"]["members"]!["mapValue"]!["fields"]!["phone-1"]!["mapValue"]!["fields"]!;
+        Assert.Equal("3", me["next_sale"]!["integerValue"]!.GetValue<string>());
+        Assert.Equal("2", me["next_receipt"]!["integerValue"]!.GetValue<string>());
+
+        // The same bill arriving twice is booked once.
+        PhoneSends("M1-000001", "sale", new { party = customer, date, items = new[] { new { product = product.GetProperty("id").GetInt64(), quantity = "1", unit_price = (string?)null } } });
+        await Sync.TickAsync("main", CancellationToken.None);
+        var sales = (await Get("/api/sales/?search=M1-000001")).GetProperty("data").GetProperty("count").GetInt32();
+        Assert.Equal(1, sales);
+    }
+
+    [Fact]
+    public async Task PhoneEntryCanBeSwitchedOff()
+    {
+        await LinkPhoneAsync();
+        Assert.True(_docs[$"books/{Book}"]["entry"]!["booleanValue"]!.GetValue<bool>());
+        await Post("/api/cloud/entry/", new { enabled = false });
+        await Sync.TickAsync("main", CancellationToken.None);
+        Assert.False(_docs[$"books/{Book}"]["entry"]!["booleanValue"]!.GetValue<bool>());
+    }
+
     [Fact]
     public async Task PairingNeedsTheOnlineCopySwitchedOn()
     {

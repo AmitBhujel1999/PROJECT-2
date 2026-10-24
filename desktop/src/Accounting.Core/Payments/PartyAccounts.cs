@@ -52,15 +52,16 @@ public static class PartyAccounts
     public static PartyPayment CreatePayment(
         Tx tx, Actor actor, AccountConfig cfg, long partyId, DateOnly date, decimal amount, string? paymentMethod = null,
         long? accountId = null, string referenceNumber = "", string notes = "", IReadOnlyList<AllocationRequest>? allocations = null,
-        bool autoAllocate = false)
+        bool autoAllocate = false, string? number = null)
     {
         Permissions.Require(actor, cfg.Permission + ".create");
-        return Insert(tx, actor, cfg, partyId, date, amount, paymentMethod, accountId, referenceNumber, notes, allocations, autoAllocate);
+        return Insert(tx, actor, cfg, partyId, date, amount, paymentMethod, accountId, referenceNumber, notes, allocations, autoAllocate, number);
     }
 
     private static PartyPayment Insert(
         Tx tx, Actor actor, AccountConfig cfg, long partyId, DateOnly date, decimal amount, string? paymentMethod,
-        long? accountId, string referenceNumber, string notes, IReadOnlyList<AllocationRequest>? allocations, bool autoAllocate)
+        long? accountId, string referenceNumber, string notes, IReadOnlyList<AllocationRequest>? allocations, bool autoAllocate,
+        string? number = null)
     {
         tx.RequireWrite();
         ActiveParty(tx, cfg, partyId);
@@ -76,7 +77,8 @@ public static class PartyAccounts
             VALUES (@number, @partyId, @date, @amount, @method, @accountId, @referenceNumber, @notes, @UserId)
             """, new
             {
-                number = Sequences.Next(tx, cfg.SequenceKey), partyId, date, amount = Money.ToPaisa(amount), method,
+                number = number is { } given ? Trade.TradeService.PhoneNumber(tx, cfg.PaymentTable, given, "Receipt") : Sequences.Next(tx, cfg.SequenceKey),
+                partyId, date, amount = Money.ToPaisa(amount), method,
                 accountId = account.Id, referenceNumber = referenceNumber.Trim(), notes = notes.Trim(), actor.UserId,
             });
         var payment = GetPayment(tx, cfg, id);

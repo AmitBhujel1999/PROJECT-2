@@ -26,6 +26,25 @@ service cloud.firestore {
         allow write: if isOwner(b);
       }
 
+      // A sale or receipt made on a phone, waiting for the PC to book it. The document id is the
+      // number the phone gave it, in the phone's own series (M1-000001 / M1-R-000001).
+      match /outbox/{number} {
+        allow create: if isMember(b) && book(b).entry == true
+          && request.resource.data.uid == request.auth.uid
+          && number.matches(book(b).members[request.auth.uid].prefix + '-(R-)?[0-9]{6}')
+          && ((request.resource.data.kind == 'sale' && !number.matches('.*-R-.*')
+                && 'sales.create' in book(b).members[request.auth.uid].perms)
+              || (request.resource.data.kind == 'receipt' && number.matches('.*-R-.*')
+                && 'receipts.create' in book(b).members[request.auth.uid].perms));
+        allow get, list, delete: if isOwner(b);
+      }
+
+      // What happened to it (booked / failed), for the phone that made it.
+      match /results/{number} {
+        allow get: if isMember(b) && resource.data.uid == request.auth.uid;
+        allow list, write: if isOwner(b);
+      }
+
       // A phone asking to join with the one-time code the PC showed (the code is the document id).
       match /pairing/{code} {
         allow create: if request.auth != null && request.resource.data.uid == request.auth.uid && code.size() == 32;

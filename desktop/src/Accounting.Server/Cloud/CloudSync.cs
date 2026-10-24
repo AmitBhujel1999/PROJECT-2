@@ -80,6 +80,20 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
         return (code, $"{firebase.Config.AppUrl}/link?b={book}&c={code}", expires);
     }
 
+    /// <summary>Allow or stop sales and receipts made on phones.</summary>
+    public void SetPhoneEntry(string slug, bool allowed)
+    {
+        SetState(companies.Get(slug)!, "entry", allowed ? "1" : "0");
+        _forced[slug] = true;
+    }
+
+    /// <summary>Book a phone sale/receipt that failed before (after fixing the cause, e.g. stock).</summary>
+    public void Retry(string slug, string number)
+    {
+        companies.Get(slug)!.Write(tx => tx.Execute("UPDATE cloud_inbox SET status = 'new', message = '' WHERE number = @number AND status = 'failed'", new { number }));
+        _forced[slug] = true;
+    }
+
     public void RemoveDevice(string slug, string uid)
     {
         var db = companies.Get(slug)!;
@@ -133,6 +147,8 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
 
             var joined = _pairings.Any(p => p.Value.Slug == slug && p.Value.ExpiresUtc > DateTime.UtcNow)
                 && await AcceptPairingsAsync(slug, db, book, session, ct);
+            if (await BookPhoneEntriesAsync(slug, db, book, session, ct))
+                _forced[slug] = true;
 
             var version = Version(db);
             var lastSync = DateTime.TryParse(state.GetValueOrDefault("last_sync"), null, System.Globalization.DateTimeStyles.RoundtripKind, out var t)
@@ -198,12 +214,19 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
             writes.Add(firebase.Delete($"books/{book}/pairing/{code}"));
             if (uid is null || !_pairings.TryRemove(code, out var pairing) || pairing.Slug != slug || pairing.ExpiresUtc < DateTime.UtcNow)
                 continue;
-            db.Write(tx => tx.Execute(
-                """
-                INSERT INTO cloud_devices (uid, user_id, name, me, perms) VALUES (@uid, @userId, @name, @me, @perms)
-                ON CONFLICT (uid) DO UPDATE SET user_id = @userId, name = @name, me = @me, perms = @perms
-                """,
-                new { uid, userId = pairing.UserId, name = device.Length > 60 ? device[..60] : device, me = pairing.Me, perms = string.Join(",", pairing.Perms) }));
+            db.Write(tx =>
+            {
+                // Each phone gets its own invoice series: M1-000001, M2-000001, ...
+                var prefix = tx.Scalar<string?>("SELECT prefix FROM cloud_devices WHERE uid = @uid", new { uid }) is { Length: > 0 } p ? p
+                    : "M" + (tx.Query<string>("SELECT number FROM cloud_inbox UNION SELECT prefix || '-' FROM cloud_devices WHERE prefix <> ''")
+                        .Select(n => int.TryParse(n[1..n.IndexOf('-')], out var k) ? k : 0).DefaultIfEmpty(0).Max() + 1);
+                return tx.Execute(
+                    """
+                    INSERT INTO cloud_devices (uid, user_id, name, me, perms, prefix) VALUES (@uid, @userId, @name, @me, @perms, @prefix)
+                    ON CONFLICT (uid) DO UPDATE SET user_id = @userId, name = @name, me = @me, perms = @perms, prefix = @prefix
+                    """,
+                    new { uid, userId = pairing.UserId, name = device.Length > 60 ? device[..60] : device, me = pairing.Me, perms = string.Join(",", pairing.Perms), prefix });
+            });
             joined = true;
         }
         if (joined)
@@ -216,9 +239,14 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
     /// <summary>books/{book}: owner, company name, and the phones allowed in (their user, role permissions).</summary>
     private JsonObject BookDoc(Database db, string book, string ownerUid)
     {
-        var (name, devices) = db.Read(tx => (
+        var (name, devices, numbers) = db.Read(tx => (
             BusinessSettings.Get(tx).BusinessName,
-            tx.Rows("SELECT * FROM cloud_devices").Select(r => (Uid: r.Str("uid"), Name: r.Str("name"), Me: r.Str("me"), Perms: r.Str("perms"))).ToList()));
+            tx.Rows("SELECT * FROM cloud_devices").Select(r => (Uid: r.Str("uid"), Name: r.Str("name"), Me: r.Str("me"), Perms: r.Str("perms"), Prefix: r.Str("prefix"))).ToList(),
+            tx.Query<string>("SELECT number FROM sales WHERE number LIKE 'M%' UNION ALL SELECT number FROM customer_receipts WHERE number LIKE 'M%' UNION ALL SELECT number FROM cloud_inbox").ToList()));
+        // The next free number of each phone's series (after everything booked or received).
+        long Next(string prefix, bool receipt) => numbers
+            .Where(n => n.StartsWith(prefix + (receipt ? "-R-" : "-")) && n.Length == prefix.Length + (receipt ? 9 : 7))
+            .Select(n => long.TryParse(n[^6..], out var k) ? k : 0).DefaultIfEmpty(0).Max() + 1;
         var members = new JsonObject();
         foreach (var d in devices)
             members[d.Uid] = Firebase.Map(new JsonObject
@@ -226,14 +254,120 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
                 ["device"] = Firebase.Str(d.Name),
                 ["me"] = Firebase.Str(d.Me),
                 ["perms"] = Firebase.Array(d.Perms.Split(',', StringSplitOptions.RemoveEmptyEntries)),
+                ["prefix"] = Firebase.Str(d.Prefix),
+                ["next_sale"] = Firebase.Int(d.Prefix.Length > 0 ? Next(d.Prefix, false) : 1),
+                ["next_receipt"] = Firebase.Int(d.Prefix.Length > 0 ? Next(d.Prefix, true) : 1),
             });
         return firebase.Update($"books/{book}", new JsonObject
         {
             ["owner"] = Firebase.Str(ownerUid),
             ["name"] = Firebase.Str(name),
             ["members"] = Firebase.Map(members),
+            ["entry"] = Firebase.Bool(State(db).GetValueOrDefault("entry") != "0"),
             ["updated"] = Firebase.Time(DateTime.UtcNow),
         });
+    }
+
+    // ------------------------------------------------------------------ sales and receipts made on phones
+
+    /// <summary>
+    /// Take the phones' new sales/receipts out of Firebase (books/{book}/outbox) into the inbox here,
+    /// then book each one as the phone's user, keeping the number the phone gave it. The result goes
+    /// back to the phone (books/{book}/results/{number}). Returns true when anything was booked.
+    /// </summary>
+    private async Task<bool> BookPhoneEntriesAsync(string slug, Database db, string book, FirebaseSession session, CancellationToken ct)
+    {
+        var docs = await firebase.ListAsync(session.IdToken, $"books/{book}/outbox", ct);
+        if (docs.Count > 0)
+        {
+            db.Write(tx =>
+            {
+                foreach (var doc in docs)
+                {
+                    var name = doc["name"]!.GetValue<string>();
+                    var number = name[(name.LastIndexOf('/') + 1)..];
+                    var uid = Firebase.FieldString(doc, "uid") ?? "";
+                    var userId = tx.Scalar<long?>("SELECT user_id FROM cloud_devices WHERE uid = @uid", new { uid });
+                    tx.Execute(
+                        """
+                        INSERT INTO cloud_inbox (number, uid, user_id, kind, body, device, status, message)
+                        VALUES (@number, @uid, @userId, @kind, @body, @device, @status, @message)
+                        ON CONFLICT (number) DO NOTHING
+                        """,
+                        new
+                        {
+                            number, uid, userId, kind = Firebase.FieldString(doc, "kind") == "receipt" ? "receipt" : "sale",
+                            body = Firebase.FieldString(doc, "body") ?? "{}", device = Firebase.FieldString(doc, "device") ?? "",
+                            status = userId is null ? "failed" : "new", message = userId is null ? "This phone is no longer linked." : "",
+                        });
+                }
+                return 0;
+            });
+            await firebase.CommitAsync(session.IdToken,
+                docs.Select(d => firebase.Delete($"books/{book}/outbox/{d["name"]!.GetValue<string>().Split('/')[^1]}")).ToList(), ct);
+        }
+
+        var waiting = db.Read(tx => tx.Rows("SELECT * FROM cloud_inbox WHERE status = 'new' ORDER BY received_at, number")
+            .Select(r => (Number: r.Str("number"), Uid: r.Str("uid"), UserId: r.Long("user_id"), Kind: r.Str("kind"), Body: r.Str("body"))).ToList());
+        var results = new List<JsonObject>();
+        foreach (var e in waiting)
+        {
+            JsonObject body;
+            try
+            {
+                body = JsonNode.Parse(e.Body) as JsonObject ?? new JsonObject();
+            }
+            catch (JsonException)
+            {
+                body = new JsonObject();
+            }
+            body["number"] = e.Number;
+            var (ok, message, id) = await PostAsync(slug, e.Kind == "sale" ? "sales/" : "customer-receipts/", body, e.UserId, ct);
+            if (!ok && message.Contains("ALREADY_BOOKED"))
+                (ok, message) = (true, "Already booked.");
+            db.Write(tx => tx.Execute(
+                "UPDATE cloud_inbox SET status = @status, message = @message, doc_id = @id, booked_at = CASE WHEN @ok THEN strftime('%Y-%m-%dT%H:%M:%fZ', 'now') END WHERE number = @number",
+                new { status = ok ? "booked" : "failed", message = ok ? "" : message, id, ok, number = e.Number }));
+            results.Add(firebase.Update($"books/{book}/results/{e.Number}", new JsonObject
+            {
+                ["uid"] = Firebase.Str(e.Uid),
+                ["status"] = Firebase.Str(ok ? "booked" : "failed"),
+                ["message"] = Firebase.Str(ok ? "" : message),
+                ["id"] = Firebase.Int(id ?? 0),
+                ["at"] = Firebase.Time(DateTime.UtcNow),
+            }));
+        }
+        if (results.Count > 0)
+            await firebase.CommitAsync(session.IdToken, results, ct);
+        return waiting.Count > 0;
+    }
+
+    /// <summary>POST to this server as the given user; (ok, error message, new record id).</summary>
+    private async Task<(bool Ok, string Message, long? Id)> PostAsync(string slug, string path, JsonObject body, long userId, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{serverUrl().TrimEnd('/')}/api/{path}")
+        {
+            Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"),
+        };
+        request.Headers.Add("X-Internal-Key", InternalKey);
+        request.Headers.Add("X-Internal-User", userId.ToString());
+        // The CSRF check wants the same token in the cookie and the header.
+        request.Headers.Add("X-CSRFToken", InternalKey);
+        request.Headers.Add("Cookie", $"{ApiServer.CompanyCookie}={slug}; {ApiServer.CsrfCookie}={InternalKey}");
+        using var response = await _self.SendAsync(request, ct);
+        var text = await response.Content.ReadAsStringAsync(ct);
+        try
+        {
+            var json = JsonNode.Parse(text);
+            if (response.IsSuccessStatusCode)
+                return (true, "", json?["data"]?["id"]?.GetValue<long>());
+            var error = json?["error"];
+            return (false, $"{error?["message"]?.GetValue<string>() ?? $"Failed ({(int)response.StatusCode})."} [{error?["code"]?.GetValue<string>()}]", null);
+        }
+        catch (JsonException)
+        {
+            return (false, $"Failed ({(int)response.StatusCode}).", null);
+        }
     }
 
     // ------------------------------------------------------------------ uploading pages
@@ -266,7 +400,7 @@ public sealed class CloudSync(CompanyRegistry companies, Firebase firebase, Func
             new("vendor-payments/", all, "payments.view"),
             new("expenses/", all, "expenses.view"),
             new("expense-categories/", all, "expenses.view"),
-            new("cash-bank/accounts/", all, "cashbank.view"),
+            new("cash-bank/accounts/", all, "cashbank.list"),
             new("cash-bank/contras/", all, "cashbank.view"),
             new("inventory/adjustments/", all, "inventory.view"),
             new("journal/vouchers/", all, "journal.view"),

@@ -372,6 +372,24 @@ internal static class Schema
             parts INTEGER NOT NULL
         );
         """,
+
+        // 6: sales and receipts made on phones (own number series per phone, booked when the PC is online)
+        """
+        ALTER TABLE cloud_devices ADD COLUMN prefix TEXT NOT NULL DEFAULT '';
+        CREATE TABLE cloud_inbox (
+            number      TEXT PRIMARY KEY,
+            uid         TEXT NOT NULL,
+            user_id     INTEGER,
+            kind        TEXT NOT NULL CHECK (kind IN ('sale', 'receipt')),
+            body        TEXT NOT NULL,
+            device      TEXT NOT NULL DEFAULT '',
+            status      TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'booked', 'failed')),
+            message     TEXT NOT NULL DEFAULT '',
+            doc_id      INTEGER,
+            received_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+            booked_at   TEXT
+        );
+        """,
     ];
 
     private const string Now = "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))";

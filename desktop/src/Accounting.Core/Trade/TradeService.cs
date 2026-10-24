@@ -109,6 +109,16 @@ public static class TradeService
         return new TradePreview(totals, products.Values.ToList(), stock);
     }
 
+    /// <summary>A number from a phone's own series ("M1-000001"), checked so it is used only once.</summary>
+    public static string PhoneNumber(Tx tx, string table, string number, string label)
+    {
+        if (!System.Text.RegularExpressions.Regex.IsMatch(number, "^M[0-9]{1,3}-(R-)?[0-9]{6}$"))
+            throw new ValidationError("number", "Not a phone number series (M1-000001).");
+        if (tx.Scalar<long>($"SELECT COUNT(*) FROM {table} WHERE number = @number", new { number }) > 0)
+            throw new BusinessError($"{label} {number} is already booked.", "ALREADY_BOOKED", 409);
+        return number;
+    }
+
     /// <summary>Save an invoice or bill. Warnings list products that sank to or below their reorder level (sales).</summary>
     public static SaveResult Create(Tx tx, Actor actor, TradeKind kind, DocumentInput input)
     {
@@ -121,7 +131,7 @@ public static class TradeService
             InventoryService.CheckAvailability(tx, Requirements(input), input.Date);
         var totals = BuildTotals(kind, input, products);
         var dueDate = ResolveDueDate(actor, input.Date, input.DueDate, party.CreditDays);
-        var number = Sequences.Next(tx, kind.SequenceKey);
+        var number = input.Number is { } given ? PhoneNumber(tx, kind.Table, given, kind.Label) : Sequences.Next(tx, kind.SequenceKey);
         var id = tx.Insert(
             $"""
             INSERT INTO {kind.Table} (number, party_id, {(kind.IsSale ? "" : "vendor_bill_number, ")}date, due_date, subtotal, item_discount_total,

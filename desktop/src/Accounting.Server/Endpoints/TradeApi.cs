@@ -185,7 +185,11 @@ public static class TradeApi
             api.MapPost(route, async (HttpContext h) =>
             {
                 var a = Api.Of(h);
-                var input = Input(await a.BodyAsync(), preview: false);
+                var body = await a.BodyAsync();
+                var input = Input(body, preview: false);
+                // A sale made on a phone keeps the number the phone gave it (only from the online-copy sync).
+                if (h.Items.ContainsKey("internal") && body.Str("number") is { Length: > 0 } phoneNumber)
+                    input = input with { Number = phoneNumber };
                 var result = a.Write((tx, actor) => TradeService.Create(tx, actor, kind, input));
                 var data = a.Read(tx => DetailJson(tx, kind, result.Document.Id));
                 if (kind.IsSale)

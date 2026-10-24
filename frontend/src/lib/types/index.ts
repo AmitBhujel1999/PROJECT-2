@@ -99,6 +99,9 @@ export interface DocLine {
 }
 
 export interface TradeDoc {
+	/** A bill made on a phone (online copy) that the computer has not booked yet. */
+	pending_status?: 'waiting' | 'booked' | 'failed';
+	pending_message?: string;
 	id: number;
 	invoice_number?: string;
 	bill_number?: string;
@@ -149,6 +152,9 @@ export interface Totals {
 }
 
 export interface PaymentDoc {
+	/** A bill made on a phone (online copy) that the computer has not booked yet. */
+	pending_status?: 'waiting' | 'booked' | 'failed';
+	pending_message?: string;
 	id: number;
 	number: string;
 	party: number;

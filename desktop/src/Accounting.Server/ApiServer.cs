@@ -171,9 +171,12 @@ public static class ApiServer
                  && context.Connection.RemoteIpAddress is { } ip && System.Net.IPAddress.IsLoopback(ip)
                  && CryptographicOperations.FixedTimeEquals(System.Text.Encoding.UTF8.GetBytes(key), System.Text.Encoding.UTF8.GetBytes(CloudSync.InternalKey)))
         {
-            // The online-copy sync reading pages as the company's first administrator.
-            user = db.Read(tx => tx.Scalar<long?>("SELECT id FROM users WHERE role = 'ADMIN' AND is_active = 1 ORDER BY id LIMIT 1") is { } adminId
-                ? UserService.Get(tx, adminId) : null);
+            // The online-copy sync: reading pages as the company's first administrator, or booking a
+            // phone's sale as the phone's user.
+            user = long.TryParse(context.Request.Headers["X-Internal-User"].ToString(), out var asUser)
+                ? db.Read(tx => tx.Scalar<long?>("SELECT id FROM users WHERE id = @asUser AND is_active = 1", new { asUser }) is { } id ? UserService.Get(tx, id) : null)
+                : db.Read(tx => tx.Scalar<long?>("SELECT id FROM users WHERE role = 'ADMIN' AND is_active = 1 ORDER BY id LIMIT 1") is { } adminId
+                    ? UserService.Get(tx, adminId) : null);
             context.Items["internal"] = true;
         }
         context.Items[nameof(Api)] = new Api(context, db, user);

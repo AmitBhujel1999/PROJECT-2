@@ -3,9 +3,10 @@
  * (mero-lekhapal.web.app) instead of the PC, API reads are answered from the copy the PC
  * program uploads: one Firestore document per page, gzip + base64, in one or more parts.
  * Lists hold every row, so searching, filtering, sorting and paging happen here.
- * Changes need the PC (the copy is read-only).
+ * Sales and receipts can be made on the phone (entry.ts); everything else needs the PC.
  */
 import { ApiError, type Envelope, type Query } from '$lib/api/client';
+import { calculateSale, createReceipt, createSale, openInvoices, pendingById, pendingList, refreshPending } from './entry';
 
 export const FIREBASE = {
 	apiKey: 'AIzaSyBab1tS3IgJeMkPzym9NOLzVVuqTw3hLLc',
@@ -63,6 +64,9 @@ export async function signUp(): Promise<{ uid: string; refresh: string; id: stri
 	return { uid: j.localId, refresh: j.refreshToken, id: j.idToken };
 }
 
+export const firestoreBase = () => DOCS;
+export const currentToken = () => idToken();
+
 async function idToken(): Promise<string> {
 	if (token && token.expires > Date.now()) return token.id;
 	const link = cloudLink();
@@ -96,6 +100,8 @@ function saveLinkKeepingToken(link: CloudLink) {
 
 type Fields = Record<string, any>;
 
+export const firestore = (path: string) => getDoc(path);
+
 async function getDoc(path: string): Promise<Fields | null> {
 	let r: Response;
 	try {
@@ -113,9 +119,17 @@ export interface Book {
 	name: string;
 	updated: string;
 	me: any;
+	/** This phone's bill series ("M1") and the next free numbers; whether phones may make sales. */
+	prefix: string;
+	nextSale: number;
+	nextReceipt: number;
+	entry: boolean;
 }
 
 let book: Book | null = null;
+
+/** The linked company as last loaded (no network). */
+export const currentBookCache = () => book;
 
 /** The linked company: name, last upload time and this phone's user (null when no longer allowed). */
 export async function loadBook(force = false): Promise<Book | null> {
@@ -128,7 +142,11 @@ export async function loadBook(force = false): Promise<Book | null> {
 	book = {
 		name: f.name?.stringValue ?? '',
 		updated: f.updated?.timestampValue ?? '',
-		me: JSON.parse(member.me?.stringValue ?? 'null')
+		me: JSON.parse(member.me?.stringValue ?? 'null'),
+		prefix: member.prefix?.stringValue ?? '',
+		nextSale: Number(member.next_sale?.integerValue ?? 1),
+		nextReceipt: Number(member.next_receipt?.integerValue ?? 1),
+		entry: f.entry?.booleanValue !== false
 	};
 	return book;
 }
@@ -157,7 +175,7 @@ async function page(path: string): Promise<any> {
 	return JSON.parse(await gunzip(text));
 }
 
-function cachedPage(path: string): Promise<any> {
+export function cachedPage(path: string): Promise<any> {
 	let p = pages.get(path);
 	if (!p) {
 		p = page(path);
@@ -172,26 +190,60 @@ function cachedPage(path: string): Promise<any> {
 // ---------------------------------------------------------------- the API, answered from the copy
 
 const NOT_HERE = 'Not in the online copy. Open this on the computer (or on the same Wi-Fi as the computer).';
-const READ_ONLY = 'The online copy is read-only. Make changes on the computer, or on the same Wi-Fi as the computer.';
+const READ_ONLY = 'Only sales and receipts can be made on the online copy. Do this on the computer, or on the same Wi-Fi as the computer.';
 
-export async function cloudRequest<T>(method: string, rawPath: string, query: Query = {}): Promise<Envelope<T>> {
+export async function cloudRequest<T>(method: string, rawPath: string, query: Query = {}, body: any = {}): Promise<Envelope<T>> {
 	const path = (rawPath.replace(/^\/?(api\/)?/, '').split('?')[0] + '/').replace(/\/+$/, '/');
 	const ok = (data: any): Envelope<T> => ({ success: true, data, message: '' });
 
 	if (path === 'auth/csrf/') return ok(null);
 	if (path === 'auth/logout/') return ok(null);
-	if (method !== 'GET') throw new ApiError(403, 'READ_ONLY', READ_ONLY);
 
 	if (!cloudLink()) throw new ApiError(401, 'NOT_LINKED', 'This phone is not linked yet.');
 	const b = await loadBook();
 	if (!b) throw new ApiError(401, 'NOT_LINKED', 'This phone is no longer allowed. Link it again from the computer.');
+
+	if (method !== 'GET') {
+		if (path === 'sales/calculate/') return ok(await calculateSale(body));
+		if (path === 'sales/') {
+			const r = await createSale(body);
+			return { success: true, data: r.data as T, message: r.message };
+		}
+		if (path === 'customer-receipts/') {
+			const r = await createReceipt(body);
+			return { success: true, data: r.data as T, message: r.message };
+		}
+		throw new ApiError(403, 'READ_ONLY', READ_ONLY);
+	}
+
+	// Bills made on this phone that the computer has not booked yet.
+	const pendingId = path.match(/^(sales|customer-receipts)\/(p-[^/]+)\/$/);
+	if (pendingId) {
+		await refreshPending();
+		const p = pendingById(pendingId[2]);
+		if (!p) throw new ApiError(404, 'NOT_FOUND', 'Not found on this phone.');
+		return ok({ ...p.doc, pending_status: p.status, pending_message: p.message, booked_id: p.realId || null });
+	}
+	if (path === 'customer-receipts/open-documents/') return ok((await openInvoices(Number(query.party))) as T);
 	if (path === 'auth/me/') return ok(b.me);
 	if (path === 'companies/') return ok({ companies: [{ slug: 'main', name: b.name }], current: 'main', setup: false });
 	if (path.endsWith('/pdf/') || query.export) throw new ApiError(404, 'NOT_AVAILABLE', 'PDFs and exports need the computer.');
 
 	const data = await cachedPage(path);
 	if (data === null) throw new ApiError(404, 'NOT_AVAILABLE', NOT_HERE);
-	if (data && Array.isArray(data.results) && typeof data.count === 'number') return ok(filterList(data, query) as T);
+	if (data && Array.isArray(data.results) && typeof data.count === 'number') {
+		// Waiting bills from this phone first in the sales / receipts lists (until the copy has them).
+		const kind = path === 'sales/' ? 'sale' : path === 'customer-receipts/' ? 'receipt' : null;
+		if (kind) {
+			await refreshPending().catch(() => []);
+			const known = new Set(data.results.map((r: any) => r.invoice_number ?? r.number));
+			const extra = pendingList()
+				.filter((p) => p.kind === kind && !known.has(p.number))
+				.map((p) => ({ ...p.row, pending_status: p.status }));
+			return ok(filterList({ ...data, results: [...extra, ...data.results], count: data.count + extra.length }, query) as T);
+		}
+		return ok(filterList(data, query) as T);
+	}
 	return ok(data);
 }
 

@@ -10,7 +10,17 @@
 		uid: string;
 		name: string;
 		username: string;
+		series: string;
 		added_at: string;
+	}
+	interface InboxItem {
+		number: string;
+		kind: 'sale' | 'receipt';
+		device: string;
+		status: 'new' | 'booked' | 'failed';
+		message: string;
+		doc_id: number;
+		received_at: string;
 	}
 	interface Status {
 		enabled: boolean;
@@ -18,7 +28,9 @@
 		last_sync: string | null;
 		last_error: string | null;
 		pages: number;
+		phone_entry: boolean;
 		devices: Device[];
+		inbox: InboxItem[];
 	}
 
 	let status = $state<Status | null>(null);
@@ -53,6 +65,9 @@
 
 	const toggle = () => run(() => api.post<Status>('cloud/enable/', { enabled: !status?.enabled }));
 	const syncNow = () => run(() => api.post<Status>('cloud/sync/'));
+	const toggleEntry = () => run(() => api.post<Status>('cloud/entry/', { enabled: !status?.phone_entry }));
+	const retry = (i: InboxItem) => run(() => api.post<Status>(`cloud/inbox/${i.number}/retry/`));
+	const link = (i: InboxItem) => (i.kind === 'sale' ? `/sales/${i.doc_id}` : `/receipts/${i.doc_id}`);
 	function remove(d: Device) {
 		if (!confirm(`Remove ${d.name || 'this phone'} (${d.username})? It will no longer open the online copy.`)) return;
 		run(() => api.delete<Status>(`cloud/devices/${d.uid}/`));
@@ -93,9 +108,46 @@
 					<div><Button variant="outline" size="sm" onclick={syncNow} disabled={busy}>Upload now</Button></div>
 				{/if}
 				<p class="text-xs text-muted-foreground">
-					The copy is stored in Google Firebase (Mumbai). Phones can only view it, and only the pages their user's role allows. PDFs,
-					exports and changes still need the computer.
+					The copy is stored in Google Firebase (Mumbai). Phones see only the pages their user's role allows. PDFs, exports and
+					changes other than sales and receipts still need the computer.
 				</p>
+			</div>
+		</Card>
+
+		<Card>
+			<div class="grid gap-3 p-5">
+				<div class="flex items-center justify-between gap-3">
+					<div>
+						<h2 class="font-semibold">Sales and receipts on phones</h2>
+						<p class="text-sm text-muted-foreground">
+							{status.phone_entry
+								? 'Allowed. Each phone numbers its bills in its own series (M1-000001, receipts M1-R-000001); they are booked here when this computer is online.'
+								: 'Off. Phones can only view the books.'}
+						</p>
+					</div>
+					<Button variant="outline" onclick={toggleEntry} disabled={busy}>{status.phone_entry ? 'Switch off' : 'Allow'}</Button>
+				</div>
+				{#if status.inbox.length}
+					<ul class="divide-y rounded-md border">
+						{#each status.inbox as i (i.number)}
+							<li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+								<div class="min-w-0">
+									<div class="font-medium">
+										{#if i.status === 'booked'}<a class="text-primary hover:underline" href={link(i)}>{i.number}</a>{:else}{i.number}{/if}
+										<span class="text-muted-foreground">· {i.kind === 'sale' ? 'Sale' : 'Receipt'} · {when(i.received_at)}</span>
+									</div>
+									{#if i.status === 'failed'}<div class="text-xs text-red-700">{i.message}</div>{/if}
+								</div>
+								{#if i.status === 'failed'}
+									<Button size="sm" onclick={() => retry(i)} disabled={busy}>Try again</Button>
+								{:else}
+									<span class="text-xs {i.status === 'booked' ? 'text-green-700' : 'text-muted-foreground'}">{i.status === 'booked' ? 'Booked' : 'Waiting'}</span>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+					<p class="text-xs text-muted-foreground">A bill that could not be booked (for example, not enough stock here) was already given to the customer: fix the cause, then press Try again.</p>
+				{/if}
 			</div>
 		</Card>
 
@@ -112,7 +164,7 @@
 						{#each status.devices as d (d.uid)}
 							<li class="flex items-center justify-between gap-3 px-3 py-2 text-sm">
 								<div>
-									<div class="font-medium">{d.name || 'Phone'} · {d.username}</div>
+									<div class="font-medium">{d.name || 'Phone'} · {d.username}{d.series ? ` · bills ${d.series}-…` : ''}</div>
 									<div class="text-xs text-muted-foreground">Linked {when(d.added_at)}</div>
 								</div>
 								<Button variant="outline" size="sm" onclick={() => remove(d)} disabled={busy}>Remove</Button>

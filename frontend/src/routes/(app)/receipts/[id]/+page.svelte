@@ -5,5 +5,5 @@
 
 <svelte:head><title>Receipts · Mero Lekhapal</title></svelte:head>
 {#key page.params.id}
-	<PaymentDetail kind="receipt" id={Number(page.params.id)} />
+	<PaymentDetail kind="receipt" id={page.params.id?.startsWith('p-') ? page.params.id : Number(page.params.id)} />
 {/key}

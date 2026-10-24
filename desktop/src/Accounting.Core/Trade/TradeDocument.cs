@@ -161,6 +161,8 @@ public sealed record DocumentInput
     public string VendorBillNumber { get; init; } = "";
     public IReadOnlyList<LineItemInput> Items { get; init; } = [];
     public PaymentInput? Payment { get; init; }
+    /// <summary>Number already given by a phone in its own series (e.g. M1-000001); null = the next number.</summary>
+    public string? Number { get; init; }
 }
 
 /// <summary>Server-calculated totals for a document being entered, with stock available for each product (sales).</summary>

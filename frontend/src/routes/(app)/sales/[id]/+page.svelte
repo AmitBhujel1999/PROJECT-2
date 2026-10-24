@@ -5,5 +5,5 @@
 
 <svelte:head><title>Sales · Mero Lekhapal</title></svelte:head>
 {#key page.params.id}
-	<DocumentDetail kind="sale" id={Number(page.params.id)} />
+	<DocumentDetail kind="sale" id={page.params.id?.startsWith('p-') ? page.params.id : Number(page.params.id)} />
 {/key}

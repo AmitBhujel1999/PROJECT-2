@@ -67,7 +67,7 @@ export async function request<T>(
 	if (cloudMode) {
 		// Opened from the online copy (phone away from the shop): read-only pages from Firebase.
 		try {
-			return await cloudRequest<T>(method, path, options.query);
+			return await cloudRequest<T>(method, path, options.query, options.body);
 		} catch (err) {
 			if (err instanceof ApiError && err.status === 401 && unauthorizedHandler) unauthorizedHandler();
 			throw err;

@@ -13,7 +13,7 @@
 	import StatusBadge from '$lib/components/ui/status-badge.svelte';
 	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
 
-	let { kind, id }: { kind: 'sale' | 'purchase'; id: number } = $props();
+	let { kind, id }: { kind: 'sale' | 'purchase'; id: number | string } = $props();
 	// svelte-ignore state_referenced_locally
 	const isSale = kind === 'sale';
 	const path = isSale ? 'sales' : 'purchases';
@@ -69,6 +69,7 @@
 		{#snippet actions()}
 			<StatusBadge status={d.payment_status} />
 			<StatusBadge status={d.status} />
+			{#if !d.pending_status}
 			<Button variant="outline" onclick={printPdf} loading={printing} data-testid="print-doc"><Printer />Print</Button>
 			<Button variant="outline" href={pdfUrl} download data-testid="download-pdf"><FileDown />PDF</Button>
 			{#if d.status === 'ACTIVE' && Number(d.balance_due) > 0 && auth.can(isSale ? 'receipts.create' : 'payments.create')}
@@ -77,8 +78,17 @@
 			{#if d.status === 'ACTIVE' && auth.can(isSale ? 'sales.cancel' : 'purchases.cancel')}
 				<Button variant="destructive" onclick={() => (cancelOpen = true)}><Ban />Cancel</Button>
 			{/if}
+			{/if}
 		{/snippet}
 	</PageHeader>
+
+{#if d.pending_status}
+		<p class="mb-4 rounded-md border px-4 py-2 text-sm {d.pending_status === 'failed' ? 'border-red-200 bg-red-50 text-red-800' : d.pending_status === 'booked' ? 'border-green-200 bg-green-50 text-green-800' : 'border-amber-200 bg-amber-50 text-amber-900'}">
+			{#if d.pending_status === 'waiting'}Saved on this phone. It is booked in the books when the computer is next online; the number does not change.
+			{:else if d.pending_status === 'booked'}Booked on the computer.
+			{:else}Could not be booked on the computer: {d.pending_message} Ask the shop to fix it and press Try again under Phone Anywhere.{/if}
+		</p>
+	{/if}
 
 	{#if d.status === 'CANCELLED'}
 		<p class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">
