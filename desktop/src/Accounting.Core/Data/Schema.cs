@@ -390,6 +390,18 @@ internal static class Schema
             booked_at   TEXT
         );
         """,
+
+        // 7: IRD tax invoice: HS code per item, and every print of a sales invoice (reprints say "Copy of original")
+        $"""
+        ALTER TABLE products ADD COLUMN hs_code TEXT NOT NULL DEFAULT '';
+        CREATE TABLE invoice_prints (
+            id         INTEGER PRIMARY KEY,
+            sale_id    INTEGER NOT NULL REFERENCES sales (id),
+            printed_by INTEGER REFERENCES users (id),
+            printed_at TEXT NOT NULL DEFAULT {Now}
+        );
+        CREATE INDEX invoice_prints_sale ON invoice_prints (sale_id);
+        """,
     ];
 
     private const string Now = "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))";

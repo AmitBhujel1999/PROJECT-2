@@ -17,9 +17,9 @@ public static class ProductService
         var data = Normalise(tx, input, excludeId: null);
         var id = tx.Insert(
             """
-            INSERT INTO products (name, sku_code, unit, description, opening_stock, opening_rate, reorder_level,
+            INSERT INTO products (name, sku_code, unit, description, hs_code, opening_stock, opening_rate, reorder_level,
                                   purchase_price, selling_price, tax_rate)
-            VALUES (@Name, @SkuCode, @Unit, @Description, @OpeningStock, @OpeningRate, @ReorderLevel,
+            VALUES (@Name, @SkuCode, @Unit, @Description, @HsCode, @OpeningStock, @OpeningRate, @ReorderLevel,
                     @PurchasePrice, @SellingPrice, @TaxRate)
             """, data);
         var product = Get(tx, id);
@@ -39,14 +39,14 @@ public static class ProductService
                 Money.FromMilli(data.OpeningStock));
         tx.Execute(
             """
-            UPDATE products SET name = @Name, sku_code = @SkuCode, unit = @Unit, description = @Description,
+            UPDATE products SET name = @Name, sku_code = @SkuCode, unit = @Unit, description = @Description, hs_code = @HsCode,
                 opening_stock = @OpeningStock, opening_rate = @OpeningRate, reorder_level = @ReorderLevel,
                 purchase_price = @PurchasePrice, selling_price = @SellingPrice, tax_rate = @TaxRate,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
             WHERE id = @id
             """, new
             {
-                id, data.Name, data.SkuCode, data.Unit, data.Description, data.OpeningStock, data.OpeningRate,
+                id, data.Name, data.SkuCode, data.Unit, data.Description, data.HsCode, data.OpeningStock, data.OpeningRate,
                 data.ReorderLevel, data.PurchasePrice, data.SellingPrice, data.TaxRate,
             });
         var after = Get(tx, id);
@@ -121,6 +121,7 @@ public static class ProductService
         SkuCode = r.Str("sku_code"),
         Unit = Units.Parse(r.Str("unit")),
         Description = r.Str("description"),
+        HsCode = r.Str("hs_code"),
         OpeningStock = r.Qty("opening_stock"),
         OpeningRate = r.Money("opening_rate"),
         ReorderLevel = r.Qty("reorder_level"),
@@ -132,7 +133,7 @@ public static class ProductService
     };
 
     private sealed record StoredProduct(
-        string Name, string SkuCode, string Unit, string Description, long OpeningStock, long OpeningRate,
+        string Name, string SkuCode, string Unit, string Description, string HsCode, long OpeningStock, long OpeningRate,
         long ReorderLevel, long PurchasePrice, long SellingPrice, long TaxRate);
 
     private static StoredProduct Normalise(Tx tx, ProductInput input, long? excludeId)
@@ -142,7 +143,7 @@ public static class ProductService
         if (name.Length == 0)
             throw new ValidationError("name", "Name is required.");
         if (sku.Length == 0)
-            throw new ValidationError("sku_code", "SKU is required.");
+            sku = NextCode(tx);
         if (tx.Scalar<long>("SELECT COUNT(*) FROM products WHERE sku_code = @sku AND id IS NOT @excludeId", new { sku, excludeId }) > 0)
             throw new ValidationError("sku_code", "A product with this SKU already exists.");
         NotNegative("opening_stock", input.OpeningStock);
@@ -154,9 +155,18 @@ public static class ProductService
         var taxRate = input.TaxRate ?? BusinessSettings.Get(tx).DefaultTaxRate;
         if (taxRate is < 0 or > 100)
             throw new ValidationError("tax_rate", "Tax rate must be between 0 and 100.");
-        return new StoredProduct(name, sku, input.Unit.ToCode(), input.Description.Trim(), Money.ToMilli(input.OpeningStock),
+        return new StoredProduct(name, sku, input.Unit.ToCode(), input.Description.Trim(), input.HsCode.Trim(), Money.ToMilli(input.OpeningStock),
             Money.ToPaisa(openingRate), Money.ToMilli(input.ReorderLevel), Money.ToPaisa(input.PurchasePrice),
             Money.ToPaisa(input.SellingPrice), Money.ToPaisa(Money.Rate(taxRate)));
+    }
+
+    /// <summary>Code for an item saved without one: ITEM-0001, ITEM-0002, ... (first free number).</summary>
+    private static string NextCode(Tx tx)
+    {
+        var n = tx.Scalar<long>("SELECT COUNT(*) FROM products") + 1;
+        while (tx.Scalar<long>("SELECT COUNT(*) FROM products WHERE sku_code = @code", new { code = $"ITEM-{n:0000}" }) > 0)
+            n++;
+        return $"ITEM-{n:0000}";
     }
 
     private static void NotNegative(string field, decimal value)

@@ -53,6 +53,14 @@ public class ProductPartyTests : IDisposable
     }
 
     [Fact]
+    public void EmptySkuGetsAutomaticCode()
+    {
+        Create(Laptop with { SkuCode = "ITEM-0002" });
+        Assert.Equal("ITEM-0003", Create(Laptop with { SkuCode = "  ", Name = "Mouse" }).SkuCode);
+        Assert.Equal("ITEM-0004", Create(Laptop with { SkuCode = "", Name = "Pen" }).SkuCode);
+    }
+
+    [Fact]
     public void EditProductIsAudited()
     {
         var p = Create(Laptop);

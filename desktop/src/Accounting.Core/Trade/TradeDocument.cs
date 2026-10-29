@@ -66,6 +66,7 @@ public sealed record TradeLine
     public long ProductId { get; init; }
     public string ProductName { get; init; } = "";
     public string SkuCode { get; init; } = "";
+    public string HsCode { get; init; } = "";
     public string Unit { get; init; } = "";
     public decimal Quantity { get; init; }
     public decimal UnitPrice { get; init; }

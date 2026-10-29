@@ -1,4 +1,4 @@
-using Accounting.Core;
+﻿using Accounting.Core;
 using System.Text;
 using Accounting.Core.Common;
 using Accounting.Core.Expenses;
@@ -47,6 +47,26 @@ public class ExportTests : IDisposable
             return 0;
         });
     }
+
+    [Fact]
+    public void InvoicePrintsAreCountedForReprints()
+    {
+        var p = _t.Product(price: 100);
+        var sale = _t.MakeSale(_t.Customer(), [Item(p, 1)]).Document;
+        _t.Read(tx => DocumentPdf.TradeDocument(tx, TradeKind.Sale, sale.Id)); // a preview without a user is not counted
+        for (var i = 0; i < 3; i++)
+            Assert.True(IsPdf(_t.Write(tx => DocumentPdf.TradeDocument(tx, TradeKind.Sale, sale.Id, _t.Admin))));
+        Assert.Equal(3, _t.Read(tx => tx.Scalar<long>("SELECT COUNT(*) FROM invoice_prints WHERE sale_id = @id", new { id = sale.Id })));
+    }
+
+    [Theory]
+    [InlineData("0", "Rupees Zero Only")]
+    [InlineData("40281", "Rupees Forty Thousand Two Hundred Eighty-One Only")]
+    [InlineData("105.50", "Rupees One Hundred Five and Fifty Paisa Only")]
+    [InlineData("12500000", "Rupees One Crore Twenty-Five Lakh Only")]
+    [InlineData("1999999.99", "Rupees Nineteen Lakh Ninety-Nine Thousand Nine Hundred Ninety-Nine and Ninety-Nine Paisa Only")]
+    public void AmountInWordsUsesLakhAndCrore(string amount, string expected) =>
+        Assert.Equal(expected, Format.AmountInWords(decimal.Parse(amount, System.Globalization.CultureInfo.InvariantCulture)));
 
     [Fact]
     public void StatementCsvHasOpeningAndClosing()

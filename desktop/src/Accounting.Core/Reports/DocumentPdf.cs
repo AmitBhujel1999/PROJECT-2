@@ -4,6 +4,7 @@ using Accounting.Core.Expenses;
 using Accounting.Core.Journal;
 using Accounting.Core.Parties;
 using Accounting.Core.Payments;
+using Accounting.Core.Security;
 using Accounting.Core.Trade;
 using MigraDoc.DocumentObjectModel;
 using MigraDoc.DocumentObjectModel.Tables;
@@ -43,89 +44,274 @@ public static class DocumentPdf
         p.Format.Font.Size = 8;
     }
 
-    /// <summary>Label / amount pairs aligned to the right edge (totals box).</summary>
-    private static void Totals(Section section, IEnumerable<(string Label, string Value, bool Bold)> rows)
-    {
-        var width = Pdf.ContentWidth(section);
-        var table = section.AddTable();
-        table.AddColumn(Unit.FromPoint(width * 0.55));
-        table.AddColumn(Unit.FromPoint(width * 0.27));
-        table.AddColumn(Unit.FromPoint(width * 0.18)).Format.Alignment = ParagraphAlignment.Right;
-        foreach (var (label, value, bold) in rows)
-        {
-            var row = table.AddRow();
-            row.Format.Font.Bold = bold;
-            if (bold)
-            {
-                row.Borders.Top.Width = row.Borders.Bottom.Width = 0.8;
-                row.Cells[0].Borders.Top.Visible = row.Cells[0].Borders.Bottom.Visible = false;
-            }
-            row.Cells[1].AddParagraph(label);
-            row.Cells[2].AddParagraph(value);
-        }
-    }
-
     // ------------------------------------------------------------------ invoice / bill
 
-    public static byte[] TradeDocument(Tx tx, TradeKind kind, long id)
+    /// <summary>
+    /// Sales invoice in the IRD tax invoice format (VAT Rules 2053, rule 17, schedule 5), or a purchase bill in the same layout.
+    /// With <paramref name="printedBy"/>, a sales invoice print is recorded: the first is the original, later ones say "Copy of original (n)".
+    /// </summary>
+    public static byte[] TradeDocument(Tx tx, TradeKind kind, long id, Actor? printedBy = null)
     {
         var s = BusinessSettings.Get(tx);
         var doc = TradeService.Get(tx, kind, id);
         var party = PartyService.Get(tx, doc.PartyId);
-        var title = (kind.IsSale ? "TAX INVOICE" : "PURCHASE BILL") + (doc.IsCancelled ? " (CANCELLED)" : "");
-        var meta = new List<(string, string)>
+        var sale = kind.IsSale;
+        var copyLabel = "";
+        if (sale)
         {
-            (kind.IsSale ? "Invoice No." : "Bill No.", doc.Number),
-            ("Date", D(s, doc.Date)),
-            ("Due Date", D(s, doc.DueDate)),
-            ("Payment Status", Format.Status(doc.PaymentStatus)),
-        };
-        if (!kind.IsSale && doc.VendorBillNumber.Length > 0)
-            meta.Insert(1, ("Vendor Bill No.", doc.VendorBillNumber));
+            var printed = tx.Scalar<long>("SELECT COUNT(*) FROM invoice_prints WHERE sale_id = @id", new { id });
+            if (printedBy is not null)
+                tx.Execute("INSERT INTO invoice_prints (sale_id, printed_by) VALUES (@id, @userId)", new { id, userId = printedBy.UserId });
+            copyLabel = printed == 0 ? "ORIGINAL – FOR BUYER" : $"COPY OF ORIGINAL ({printed})";
+        }
+        var title = sale ? "TAX INVOICE" : "PURCHASE BILL";
         var pdf = Pdf.NewDocument($"{title} {doc.Number}");
         var section = pdf.LastSection!;
-        Pdf.Header(section, s, title, meta);
-        PartyBlock(section, kind.IsSale ? "Bill To" : "Vendor", party);
+        var width = Pdf.ContentWidth(section);
+        PrintFooter(section, printedBy);
 
-        ReportColumn[] columns =
+        // copy label (and cancelled stamp), top right
+        foreach (var label in new[] { doc.IsCancelled ? "CANCELLED" : "", copyLabel }.Where(l => l.Length > 0))
+        {
+            var box = BoxedText(section, label, 8, doc.IsCancelled && label == "CANCELLED" ? Colors.DarkRed : Colors.Black);
+            box.Rows.Alignment = RowAlignment.Right;
+            section.AddParagraph().Format.Font.Size = 2;
+        }
+
+        // seller
+        var seller = section.AddParagraph();
+        seller.Format.Alignment = ParagraphAlignment.Center;
+        seller.AddFormattedText(s.BusinessName.ToUpperInvariant() + "\n", new Font { Size = 16, Bold = true });
+        var contact = string.Join("  |  ", new[] { s.Address, s.Phone.Length > 0 ? "Phone: " + s.Phone : "", s.Email }.Where(x => x.Length > 0));
+        if (contact.Length > 0)
+            seller.AddText(contact + "\n");
+        seller.AddFormattedText("PAN / VAT No.: " + (s.PanVatNo.Length > 0 ? s.PanVatNo : "________"), TextFormat.Bold);
+        seller.Format.SpaceAfter = Unit.FromPoint(8);
+
+        BoxedText(section, title, 13, Colors.Black, padding: 4).Rows.Alignment = RowAlignment.Center;
+        section.AddParagraph().Format.SpaceAfter = Unit.FromPoint(6);
+
+        // buyer / document details
+        var info = section.AddTable();
+        info.Borders.Width = 0.75;
+        info.LeftPadding = info.RightPadding = 6;
+        info.TopPadding = info.BottomPadding = 4;
+        info.AddColumn(Unit.FromPoint(width * 0.58));
+        info.AddColumn(Unit.FromPoint(width * 0.42));
+        var infoRow = info.AddRow();
+        var who = sale ? "Buyer's" : "Vendor's";
+        InfoLines(infoRow.Cells[0], 108,
         [
-            new("#", Width: 0.4), new("Item", Width: 3), new("Qty", true, 1), new("Unit Price", true, 1.1), new("Gross", true, 1.1),
-            new("Discount", true, 1), new("Taxable", true, 1.1), new($"{s.TaxLabel} %", true, 0.7), new(s.TaxLabel, true, 1), new("Total", true, 1.2),
+            ($"{who} Name:", party.Name),
+            ("Address:", party.Address),
+            ($"{who} PAN/VAT No.:", party.PanVatNo),
+        ]);
+        var pay = infoRow.Cells[0].AddParagraph();
+        pay.Format.TabStops.AddTabStop(Unit.FromPoint(108));
+        pay.AddFormattedText("Method of Payment:", TextFormat.Bold);
+        pay.AddTab();
+        var method = PaymentMethodOf(tx, kind, doc);
+        foreach (var m in new[] { "Cash", "Cheque", "Credit", "Other" })
+        {
+            pay.AddFormattedText(m == method ? "■ " : "□ ", TextFormat.Bold);
+            pay.AddText(m + "    ");
+        }
+        var details = new List<(string, string)> { (sale ? "Invoice No.:" : "Bill No.:", doc.Number) };
+        if (!sale && doc.VendorBillNumber.Length > 0)
+            details.Add(("Vendor Bill No.:", doc.VendorBillNumber));
+        details.Add(("Fiscal Year:", FiscalYear(doc.Date)));
+        details.Add(("Transaction Date:", BothDates(doc.Date)));
+        details.Add((sale ? "Invoice Issue Date:" : "Entry Date:", BothDates(DateOnly.FromDateTime(doc.CreatedAt.ToLocalTime()))));
+        if (doc.BalanceDue > 0 && doc.DueDate != doc.Date)
+            details.Add(("Due Date:", BothDates(doc.DueDate)));
+        InfoLines(infoRow.Cells[1], 92, details);
+        section.AddParagraph().Format.SpaceAfter = Unit.FromPoint(6);
+
+        // items
+        var items = section.AddTable();
+        items.Borders.Width = 0.75;
+        items.TopPadding = items.BottomPadding = 3;
+        items.LeftPadding = items.RightPadding = 6;
+        (string Label, double Width, ParagraphAlignment Align)[] columns =
+        [
+            ("S.N.", 0.45, ParagraphAlignment.Center), ("HS Code", 0.95, ParagraphAlignment.Center), ("Particulars", 3.45, ParagraphAlignment.Left),
+            ("Quantity", 0.85, ParagraphAlignment.Right), ("Unit", 0.6, ParagraphAlignment.Center), ($"Rate ({s.CurrencySymbol})", 1.05, ParagraphAlignment.Right),
+            ($"Amount ({s.CurrencySymbol})", 1.25, ParagraphAlignment.Right),
         ];
-        var grid = Pdf.GridTable(section, columns, Pdf.ContentWidth(section));
+        var totalWidth = columns.Sum(c => c.Width);
+        foreach (var c in columns)
+            items.AddColumn(Unit.FromPoint(width * c.Width / totalWidth)).Format.Alignment = c.Align;
+        var head = items.AddRow();
+        head.HeadingFormat = true;
+        head.Format.Font.Bold = true;
+        head.Shading.Color = Colors.WhiteSmoke;
+        for (var i = 0; i < columns.Length; i++)
+        {
+            head.Cells[i].AddParagraph(columns[i].Label);
+            head.Cells[i].Format.Alignment = ParagraphAlignment.Center;
+        }
         for (var i = 0; i < doc.Lines.Count; i++)
         {
             var l = doc.Lines[i];
-            var row = Pdf.AddRow(grid, [(i + 1).ToString(), l.ProductName, $"{Format.Qty(l.Quantity)} {l.Unit}", Format.Money(l.UnitPrice), Format.Money(l.GrossAmount),
-                Format.Money(l.DiscountAmount + l.InvoiceDiscountShare), Format.Money(l.TaxableAmount), $"{l.TaxRate:0.00}", Format.Money(l.TaxAmount),
-                Format.Money(l.LineTotal)], shaded: i % 2 == 1);
-            var sku = row.Cells[1].AddParagraph(l.SkuCode);
-            sku.Format.Font.Size = 6.5;
-            sku.Format.Font.Color = Pdf.Muted;
+            var row = items.AddRow();
+            row.Borders.Top.Visible = row.Borders.Bottom.Visible = false;
+            string[] cells = [(i + 1).ToString(), l.HsCode, l.ProductName + (l.TaxRate == 0 ? " (VAT exempt)" : ""), Format.Qty(l.Quantity), l.Unit,
+                Format.Money(l.UnitPrice), Format.Money(l.GrossAmount)];
+            for (var c = 0; c < cells.Length; c++)
+                row.Cells[c].AddParagraph(cells[c]);
         }
-        section.AddParagraph().Format.SpaceAfter = Unit.FromPoint(6);
-        Totals(section,
+        var filler = items.AddRow();
+        filler.Borders.Top.Visible = false;
+        filler.Height = Unit.FromPoint(Math.Max(20, (12 - doc.Lines.Count) * 15));
+
+        // amount in words and totals
+        var exempt = doc.Lines.Where(l => l.TaxRate == 0).Sum(l => l.TaxableAmount);
+        var rates = doc.Lines.Where(l => l.TaxRate > 0).Select(l => l.TaxRate).Distinct().ToList();
+        (string Label, decimal Value)[] totals =
         [
-            ("Subtotal (Gross)", Format.Money(doc.Subtotal), false),
-            ("Item Discounts", Format.Money(doc.ItemDiscountTotal), false),
-            ("Invoice Discount" + (doc.DiscountType == DiscountType.Percentage ? $" ({doc.DiscountValue:0.00}%)" : ""), Format.Money(doc.DiscountAmount), false),
-            ("Taxable Amount", Format.Money(doc.TaxableAmount), false),
-            (s.TaxLabel, Format.Money(doc.TaxAmount), false),
-            ($"GRAND TOTAL ({s.CurrencyCode})", Format.Money(doc.TotalAmount), true),
-            ("Amount Paid", Format.Money(doc.AmountPaid), false),
-            ("Balance Due", Format.Money(doc.BalanceDue), false),
-        ]);
-        Note(section, "Notes", doc.Notes);
-        if (doc.IsCancelled)
-            Note(section, "Cancelled", doc.CancelReason);
-        if (kind.IsSale && s.InvoiceFooter.Length > 0)
+            ("Total", doc.Subtotal),
+            ("Discount", doc.TotalDiscount),
+            ("Exempted Amount", exempt),
+            ("Taxable Amount", doc.TaxableAmount - exempt),
+            (s.TaxLabel + (rates.Count == 1 ? $" {rates[0]:0.##}%" : ""), doc.TaxAmount),
+            ($"Grand Total ({s.CurrencySymbol})", doc.TotalAmount),
+        ];
+        var bottom = section.AddTable();
+        bottom.Borders.Width = 0.75;
+        bottom.TopPadding = bottom.BottomPadding = 3;
+        bottom.LeftPadding = bottom.RightPadding = 6;
+        bottom.AddColumn(Unit.FromPoint(width * 0.58));
+        bottom.AddColumn(Unit.FromPoint(width * 0.24));
+        bottom.AddColumn(Unit.FromPoint(width * 0.18)).Format.Alignment = ParagraphAlignment.Right;
+        for (var i = 0; i < totals.Length; i++)
         {
-            var footer = section.AddParagraph(s.InvoiceFooter);
-            footer.Format.SpaceBefore = Unit.FromPoint(14);
-            footer.Format.Font.Size = 8;
+            var row = bottom.AddRow();
+            row.Cells[1].AddParagraph(totals[i].Label);
+            row.Cells[2].AddParagraph(Format.Money(totals[i].Value));
+            if (i == totals.Length - 1)
+            {
+                row.Format.Font.Bold = true;
+                row.Format.Font.Size = 10;
+                row.Cells[1].Shading.Color = row.Cells[2].Shading.Color = Colors.WhiteSmoke;
+            }
         }
-        Signature(section);
+        var left = bottom.Rows[0].Cells[0];
+        left.MergeDown = totals.Length - 1;
+        var words = left.AddParagraph();
+        words.AddFormattedText("Amount in words:\n", TextFormat.Bold);
+        words.AddText(Format.AmountInWords(doc.TotalAmount) + ".");
+        if (doc.AmountPaid > 0 && doc.BalanceDue > 0)
+            SmallNote(left, "Paid", $"{Format.Money(doc.AmountPaid)}    Balance due: {Format.Money(doc.BalanceDue)}");
+        SmallNote(left, "Remarks", doc.Notes);
+        if (doc.IsCancelled)
+            SmallNote(left, "Cancelled", doc.CancelReason);
+        if (sale && s.InvoiceFooter.Length > 0)
+            SmallNote(left, "", s.InvoiceFooter);
+
+        // signatures
+        section.AddParagraph().Format.SpaceAfter = Unit.FromPoint(50);
+        var sign = section.AddTable();
+        sign.AddColumn(Unit.FromPoint(width * 0.32));
+        sign.AddColumn(Unit.FromPoint(width * 0.36));
+        sign.AddColumn(Unit.FromPoint(width * 0.32));
+        var signRow = sign.AddRow();
+        signRow.Format.Alignment = ParagraphAlignment.Center;
+        foreach (var (cell, text) in new[] { (signRow.Cells[0], sale ? "Received by (Buyer)" : "Prepared by"), (signRow.Cells[2], $"For {s.BusinessName}\nAuthorised Signature") })
+        {
+            cell.Borders.Top.Width = 0.75;
+            cell.AddParagraph(text);
+        }
         return Pdf.Render(pdf);
+    }
+
+    /// <summary>One-cell table with a border around a short text (copy label, document title).</summary>
+    private static Table BoxedText(Section section, string text, double size, Color color, double padding = 2)
+    {
+        var table = section.AddTable();
+        table.Borders.Width = 1;
+        table.Borders.Color = color;
+        table.TopPadding = table.BottomPadding = padding;
+        table.LeftPadding = table.RightPadding = 10;
+        var p = new Paragraph();
+        p.AddFormattedText(text, new Font { Size = size, Bold = true, Color = color });
+        table.AddColumn(Unit.FromPoint(size * 0.62 * text.Length + 24));
+        table.AddRow().Cells[0].Add(p);
+        p.Format.Alignment = ParagraphAlignment.Center;
+        return table;
+    }
+
+    /// <summary>"Label:  value" lines with the values lined up at one tab stop.</summary>
+    private static void InfoLines(Cell cell, double tab, IEnumerable<(string Label, string Value)> lines)
+    {
+        foreach (var (label, value) in lines)
+        {
+            var p = cell.AddParagraph();
+            p.Format.TabStops.AddTabStop(Unit.FromPoint(tab));
+            p.Format.SpaceAfter = Unit.FromPoint(1.5);
+            p.AddFormattedText(label, TextFormat.Bold);
+            p.AddTab();
+            p.AddText(value);
+        }
+    }
+
+    private static void SmallNote(Cell cell, string label, string text)
+    {
+        if (text.Length == 0)
+            return;
+        var p = cell.AddParagraph();
+        p.Format.SpaceBefore = Unit.FromPoint(6);
+        p.Format.Font.Size = 8;
+        if (label.Length > 0)
+            p.AddFormattedText(label + ": ", TextFormat.Bold);
+        p.AddText(text);
+    }
+
+    /// <summary>Cash / Cheque / Credit / Other, from the payments allocated to the document. Anything still owed is credit.</summary>
+    private static string PaymentMethodOf(Tx tx, TradeKind kind, TradeDocument doc)
+    {
+        if (doc.AmountPaid == 0 || doc.BalanceDue > 0)
+            return "Credit";
+        var cfg = AccountConfig.For(kind);
+        var methods = PartyAccounts.AllocationsForDocument(tx, cfg, doc.Id).Where(a => a.IsActive)
+            .Select(a => PartyAccounts.GetPayment(tx, cfg, a.PaymentId).PaymentMethod).Distinct().ToList();
+        return methods switch
+        {
+            [PaymentMethod.Cash] => "Cash",
+            [PaymentMethod.Cheque] => "Cheque",
+            _ => "Other",
+        };
+    }
+
+    /// <summary>"2083-07-12 (2026-10-29)": B.S. first, as the tax office expects, with the A.D. date.</summary>
+    private static string BothDates(DateOnly d)
+    {
+        var bs = Format.Date(d, bs: true);
+        return bs.EndsWith(" AD") ? Format.Iso(d) : $"{bs} ({Format.Iso(d)})";
+    }
+
+    private static string FiscalYear(DateOnly d)
+    {
+        try { return NepaliDate.FiscalYear(d).Replace('-', '/'); }
+        catch (ArgumentOutOfRangeException) { return ""; }
+    }
+
+    /// <summary>Footer for invoices: who printed it and when (B.S.), and the page number.</summary>
+    private static void PrintFooter(Section section, Actor? printedBy)
+    {
+        section.Footers.Primary.Elements.Clear();
+        var footer = section.Footers.Primary.AddParagraph();
+        footer.Format.Font.Size = 7;
+        footer.Format.Font.Color = Pdf.Muted;
+        footer.Format.Borders.Top.Width = 0.5;
+        footer.Format.Borders.Top.Color = Colors.LightGray;
+        var now = DateTime.Now;
+        if (printedBy is { Username.Length: > 0 })
+            footer.AddText($"Printed by: {printedBy.Username}    |    ");
+        footer.AddText($"Printed on: {Format.Date(DateOnly.FromDateTime(now), bs: true)} {now:HH:mm}    |    Page ");
+        footer.AddPageField();
+        footer.AddText(" of ");
+        footer.AddNumPagesField();
+        footer.AddText("    |    Mero Lekhapal");
     }
 
     // ------------------------------------------------------------------ receipt / payment

@@ -41,6 +41,7 @@ export interface Product {
 	unit: string;
 	unit_display: string;
 	description: string;
+	hs_code: string;
 	opening_stock: Qty;
 	opening_rate: Money;
 	opening_amount: Money;

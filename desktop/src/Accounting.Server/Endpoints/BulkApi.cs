@@ -33,8 +33,9 @@ public static class BulkApi
     private static SheetFormat ProductsFormat() => new("Items",
     [
         new("name", "Item name", "Name of the item.", Required: true, Width: 30, Aliases: ["name", "item", "product"]),
-        new("sku_code", "Item code", "Short code, different for every item (e.g. RICE-25). Used to find items already in the app.",
-            Required: true, Width: 16, Aliases: ["sku", "code", "item code", "sku code"]),
+        new("sku_code", "Item code", "Short code, different for every item (e.g. RICE-25). Used to find items already in the app. Leave empty to get one automatically.",
+            Width: 16, Aliases: ["sku", "code", "item code", "sku code"]),
+        new("hs_code", "HS code", "Customs code printed on tax invoices (e.g. 1006.30). May be left empty.", Width: 12, Aliases: ["hs", "hs code"]),
         new("unit", "Unit", "Pick from the list.", Choices: Enum.GetValues<Unit>().Select(u => u.Display()).ToArray(), Width: 10),
         new("purchase_price", "Buying price", "Price you pay, without VAT.", Width: 14, Aliases: ["cost", "cost price", "purchase price"]),
         new("selling_price", "Selling price", "Price you sell at, without VAT.", Width: 14, Aliases: ["sale price", "price", "rate"]),
@@ -43,8 +44,8 @@ public static class BulkApi
         new("is_active", "In use", "Yes or No. Leave empty for Yes.", Choices: YesNo, Width: 8, Aliases: ["active"]),
     ],
     [
-        ["Basmati Rice 25kg", "RICE-25", "Kg", 1800, 2100, 13, 10, "Yes"],
-        ["Sunflower Oil 1L", "OIL-1L", "Ltr", 260, 330, 13, 40, "Yes"],
+        ["Basmati Rice 25kg", "RICE-25", "1006.30", "Kg", 1800, 2100, 13, 10, "Yes"],
+        ["Sunflower Oil 1L", "OIL-1L", "1512.11", "Ltr", 260, 330, 13, 40, "Yes"],
     ],
     "If an item code is already in the app, that item is changed. Otherwise a new item is added.");
 

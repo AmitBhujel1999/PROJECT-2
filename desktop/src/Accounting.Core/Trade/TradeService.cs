@@ -253,7 +253,7 @@ public static class TradeService
 
     private static IReadOnlyList<TradeLine> Lines(Tx tx, TradeKind kind, long documentId) =>
         tx.Rows($"""
-                 SELECT i.*, p.name AS product_name, p.sku_code, p.unit FROM {kind.ItemsTable} i
+                 SELECT i.*, p.name AS product_name, p.sku_code, p.hs_code, p.unit FROM {kind.ItemsTable} i
                  JOIN products p ON p.id = i.product_id WHERE i.document_id = @documentId ORDER BY i.id
                  """, new { documentId })
             .Select(r => new TradeLine
@@ -262,6 +262,7 @@ public static class TradeService
                 ProductId = r.Long("product_id"),
                 ProductName = r.Str("product_name"),
                 SkuCode = r.Str("sku_code"),
+                HsCode = r.Str("hs_code"),
                 Unit = Units.Parse(r.Str("unit")).Display(),
                 Quantity = r.Qty("quantity"),
                 UnitPrice = r.Money("unit_price"),

@@ -15,7 +15,7 @@ public static class ProductsApi
 {
     public static object Json_(Product p, decimal? currentStock) => new
     {
-        id = p.Id, name = p.Name, sku_code = p.SkuCode, unit = p.Unit.ToCode(), unit_display = p.Unit.Display(), description = p.Description,
+        id = p.Id, name = p.Name, sku_code = p.SkuCode, unit = p.Unit.ToCode(), unit_display = p.Unit.Display(), description = p.Description, hs_code = p.HsCode,
         opening_stock = Json.Q(p.OpeningStock), opening_rate = Json.M(p.OpeningRate), opening_amount = Json.M(p.OpeningAmount),
         reorder_level = Json.Q(p.ReorderLevel), purchase_price = Json.M(p.PurchasePrice), selling_price = Json.M(p.SellingPrice),
         tax_rate = Json.R(p.TaxRate), is_active = p.IsActive, current_stock = currentStock is { } s ? Json.Q(s) : null,
@@ -116,8 +116,6 @@ public static class ProductsApi
     {
         if (current is null && !b.Has("name"))
             throw new ValidationError("name", "This field is required.");
-        if (current is null && !b.Has("sku_code"))
-            throw new ValidationError("sku_code", "This field is required.");
         decimal NonNegative(string field, decimal fallback)
         {
             var v = b.Has(field) ? b.Dec(field) ?? 0 : fallback;
@@ -132,6 +130,7 @@ public static class ProductsApi
             SkuCode = b.StrOr("sku_code", current?.SkuCode ?? ""),
             Unit = unit,
             Description = b.StrOr("description", current?.Description ?? ""),
+            HsCode = b.StrOr("hs_code", current?.HsCode ?? ""),
             OpeningStock = NonNegative("opening_stock", current?.OpeningStock ?? 0),
             OpeningRate = b.Has("opening_rate") ? NonNegative("opening_rate", 0) : current?.OpeningRate,
             ReorderLevel = NonNegative("reorder_level", current?.ReorderLevel ?? 0),

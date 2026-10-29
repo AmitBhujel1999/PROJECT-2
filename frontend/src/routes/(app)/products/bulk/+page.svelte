@@ -5,7 +5,8 @@
 
 	const columns: BulkColumn[] = [
 		{ key: 'name', label: 'Item name', required: true, width: 'min-w-56' },
-		{ key: 'sku_code', label: 'Item code', required: true, width: 'w-32' },
+		{ key: 'sku_code', label: 'Item code', width: 'w-32' },
+		{ key: 'hs_code', label: 'HS code', width: 'w-24' },
 		{ key: 'unit', label: 'Unit', kind: 'select', options: UNITS, width: 'w-24' },
 		{ key: 'purchase_price', label: 'Buying price', kind: 'number', width: 'w-28' },
 		{ key: 'selling_price', label: 'Selling price', kind: 'number', width: 'w-28' },

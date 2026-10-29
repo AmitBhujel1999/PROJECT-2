@@ -23,6 +23,7 @@
 		sku_code: '',
 		unit: 'PCS',
 		description: '',
+		hs_code: '',
 		opening_stock: '0',
 		opening_rate: '0',
 		reorder_level: '0',
@@ -47,6 +48,7 @@
 						sku_code: product.sku_code,
 						unit: product.unit,
 						description: product.description,
+						hs_code: product.hs_code ?? '',
 						opening_stock: product.opening_stock,
 						opening_rate: product.opening_rate,
 						reorder_level: product.reorder_level,
@@ -82,11 +84,14 @@
 		<Field label="Name" for="p-name" required error={errors.name} class="sm:col-span-2">
 			<Input id="p-name" bind:value={form.name} required maxlength={200} aria-invalid={!!errors.name} />
 		</Field>
-		<Field label="SKU code" for="p-sku" required error={errors.sku_code} hint="Unique; stored in upper case.">
-			<Input id="p-sku" bind:value={form.sku_code} required maxlength={64} aria-invalid={!!errors.sku_code} />
+		<Field label="SKU code" for="p-sku" error={errors.sku_code} hint="Optional. Leave empty to get one automatically (ITEM-0001).">
+			<Input id="p-sku" bind:value={form.sku_code} maxlength={64} aria-invalid={!!errors.sku_code} />
 		</Field>
 		<Field label="Unit" for="p-unit" error={errors.unit}>
 			<Select id="p-unit" bind:value={form.unit} options={UNITS} />
+		</Field>
+		<Field label="HS code" for="p-hs" error={errors.hs_code} hint="Optional. Customs code printed on the tax invoice.">
+			<Input id="p-hs" bind:value={form.hs_code} maxlength={20} aria-invalid={!!errors.hs_code} />
 		</Field>
 		<Field label="Purchase price" for="p-cost" error={errors.purchase_price}>
 			<Input id="p-cost" type="number" step="0.01" min="0" bind:value={form.purchase_price} oninput={() => !rateTouched && (form.opening_rate = form.purchase_price)} class="text-right" />

@@ -29,6 +29,8 @@ public sealed record Product
     public string SkuCode { get; init; } = "";
     public Unit Unit { get; init; } = Unit.Pcs;
     public string Description { get; init; } = "";
+    /// <summary>Customs (HS) code printed on tax invoices; may be empty.</summary>
+    public string HsCode { get; init; } = "";
     public decimal OpeningStock { get; init; }
     /// <summary>Cost per unit of the opening stock.</summary>
     public decimal OpeningRate { get; init; }
@@ -51,6 +53,7 @@ public sealed record ProductInput
     public string SkuCode { get; init; } = "";
     public Unit Unit { get; init; } = Unit.Pcs;
     public string Description { get; init; } = "";
+    public string HsCode { get; init; } = "";
     public decimal OpeningStock { get; init; }
     /// <summary>Defaults to the purchase price when null.</summary>
     public decimal? OpeningRate { get; init; }
@@ -66,6 +69,7 @@ public sealed record ProductInput
         SkuCode = p.SkuCode,
         Unit = p.Unit,
         Description = p.Description,
+        HsCode = p.HsCode,
         OpeningStock = p.OpeningStock,
         OpeningRate = p.OpeningRate,
         ReorderLevel = p.ReorderLevel,
