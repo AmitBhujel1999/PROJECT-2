@@ -219,7 +219,7 @@ public static class TradeApi
             {
                 var a = Api.Of(h);
                 a.Require(perm + ".view");
-                var (pdf, number) = a.Write((tx, actor) => (DocumentPdf.TradeDocument(tx, kind, id, actor), TradeService.Get(tx, kind, id).Number));
+                var (pdf, number) = a.Write((tx, actor) => (DocumentPdf.TradeDocument(tx, kind, id, actor, preview: a.Q("preview") == "1"), TradeService.Get(tx, kind, id).Number));
                 return Api.File(pdf, "application/pdf", $"{number}.pdf", inline: a.Q("inline") == "1");
             });
         }

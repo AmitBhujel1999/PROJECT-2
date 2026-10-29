@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { FileDown, Ban, Printer } from '@lucide/svelte';
+	import { FileDown, Ban, Printer, Eye } from '@lucide/svelte';
 	import { api } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
@@ -12,12 +12,14 @@
 	import Button from '$lib/components/ui/button.svelte';
 	import StatusBadge from '$lib/components/ui/status-badge.svelte';
 	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
+	import PdfPreview from '$lib/components/ui/pdf-preview.svelte';
 
 	const id = $derived(Number(page.params.id));
 	const client = useQueryClient();
 	const q = createQuery(() => ({ queryKey: ['journal', id], queryFn: () => api.get<JournalVoucher>(`journal/vouchers/${id}/`) }));
 	const v = $derived(q.data);
 	let cancelOpen = $state(false);
+	let previewOpen = $state(false);
 
 	async function cancel(reason: string) {
 		const res = await api.post<JournalVoucher>(`journal/vouchers/${id}/cancel/`, { reason });
@@ -42,6 +44,9 @@
 	<PageHeader title="Journal Voucher {v.voucher_number}" description={fmtDate(v.date)} back={{ href: '/journal', label: 'Journal vouchers' }}>
 		{#snippet actions()}
 			<StatusBadge status={v.status} />
+			<Button variant="outline" onclick={() => (previewOpen = true)}><Eye />Preview</Button>
+			<PdfPreview bind:open={previewOpen} title="Journal Voucher {v.voucher_number}" url="/api/journal/vouchers/{id}/pdf/?inline=1" download="/api/journal/vouchers/{id}/pdf/"
+				onprint={() => window.open(`/api/journal/vouchers/${id}/pdf/?inline=1`, '_blank')} />
 			<Button variant="outline" href="/api/journal/vouchers/{id}/pdf/?inline=1" target="_blank"><Printer />Print</Button>
 			<Button variant="outline" href="/api/journal/vouchers/{id}/pdf/" download><FileDown />PDF</Button>
 			{#if v.status === 'ACTIVE' && auth.can('journal.cancel')}<Button variant="destructive" onclick={() => (cancelOpen = true)}><Ban />Cancel</Button>{/if}

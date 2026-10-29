@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { FileDown, Ban, Link2, Wand2, Unlink } from '@lucide/svelte';
+	import { FileDown, Ban, Link2, Wand2, Unlink, Eye } from '@lucide/svelte';
 	import { api, ApiError } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
@@ -11,6 +11,7 @@
 	import Card from '$lib/components/ui/card.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import Dialog from '$lib/components/ui/dialog.svelte';
+	import PdfPreview from '$lib/components/ui/pdf-preview.svelte';
 	import StatusBadge from '$lib/components/ui/status-badge.svelte';
 	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
 	import AllocationTable from './allocation-table.svelte';
@@ -18,6 +19,7 @@
 	let { kind, id }: { kind: PayKind; id: number | string } = $props();
 	// svelte-ignore state_referenced_locally
 	const side = PAY_SIDES[kind];
+	let previewOpen = $state(false);
 	const client = useQueryClient();
 	const q = createQuery(() => ({ queryKey: [side.api, id], queryFn: () => api.get<PaymentDoc>(`${side.api}/${id}/`) }));
 	const r = $derived(q.data);
@@ -83,6 +85,9 @@
 		{#snippet actions()}
 			<StatusBadge status={r.status} />
 			{#if !r.pending_status}
+			<Button variant="outline" onclick={() => (previewOpen = true)}><Eye />Preview</Button>
+			<PdfPreview bind:open={previewOpen} title="{side.label} {r.number}" url="/api/{side.api}/{id}/pdf/?inline=1" download="/api/{side.api}/{id}/pdf/"
+				onprint={() => window.open(`/api/${side.api}/${id}/pdf/?inline=1`, '_blank')} />
 			<Button variant="outline" href="/api/{side.api}/{id}/pdf/" download><FileDown />PDF</Button>
 			{#if canEdit && Number(r.unallocated_amount) > 0}
 				<Button variant="outline" onclick={autoAllocate}><Wand2 />Auto-allocate</Button>

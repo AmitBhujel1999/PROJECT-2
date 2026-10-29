@@ -56,6 +56,7 @@ public class ExportTests : IDisposable
         _t.Read(tx => DocumentPdf.TradeDocument(tx, TradeKind.Sale, sale.Id)); // a preview without a user is not counted
         for (var i = 0; i < 3; i++)
             Assert.True(IsPdf(_t.Write(tx => DocumentPdf.TradeDocument(tx, TradeKind.Sale, sale.Id, _t.Admin))));
+        _t.Write(tx => DocumentPdf.TradeDocument(tx, TradeKind.Sale, sale.Id, _t.Admin, preview: true)); // previews are not prints
         Assert.Equal(3, _t.Read(tx => tx.Scalar<long>("SELECT COUNT(*) FROM invoice_prints WHERE sale_id = @id", new { id = sale.Id })));
     }
 

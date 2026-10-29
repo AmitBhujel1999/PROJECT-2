@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-	import { Printer, FileDown, Ban, HandCoins } from '@lucide/svelte';
+	import { Printer, FileDown, Ban, HandCoins, Eye } from '@lucide/svelte';
 	import { api } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
@@ -10,6 +10,7 @@
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import Card from '$lib/components/ui/card.svelte';
 	import Button from '$lib/components/ui/button.svelte';
+	import PdfPreview from '$lib/components/ui/pdf-preview.svelte';
 	import StatusBadge from '$lib/components/ui/status-badge.svelte';
 	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
 
@@ -24,6 +25,7 @@
 	const pdfUrl = $derived(`/api/${path}/${id}/pdf/`);
 
 	let cancelOpen = $state(false);
+	let previewOpen = $state(false);
 	let printFrame: HTMLIFrameElement | null = $state(null);
 	let printing = $state(false);
 
@@ -70,6 +72,8 @@
 			<StatusBadge status={d.payment_status} />
 			<StatusBadge status={d.status} />
 			{#if !d.pending_status}
+			<Button variant="outline" onclick={() => (previewOpen = true)} data-testid="preview-doc"><Eye />Preview</Button>
+			<PdfPreview bind:open={previewOpen} title="{isSale ? 'Invoice' : 'Bill'} {number}" url="{pdfUrl}?inline=1&preview=1" download={pdfUrl} onprint={printPdf} />
 			<Button variant="outline" onclick={printPdf} loading={printing} data-testid="print-doc"><Printer />Print</Button>
 			<Button variant="outline" href={pdfUrl} download data-testid="download-pdf"><FileDown />PDF</Button>
 			{#if d.status === 'ACTIVE' && Number(d.balance_due) > 0 && auth.can(isSale ? 'receipts.create' : 'payments.create')}

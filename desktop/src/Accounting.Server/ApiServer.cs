@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -218,9 +219,12 @@ public static class ApiServer
     private static void ServeScreens(WebApplication app, string root)
     {
         var files = new PhysicalFileProvider(Path.GetFullPath(root));
+        var types = new FileExtensionContentTypeProvider();
+        types.Mappings[".mjs"] = "text/javascript"; // pdf.js worker (PDF preview)
         app.UseStaticFiles(new StaticFileOptions
         {
             FileProvider = files,
+            ContentTypeProvider = types,
             OnPrepareResponse = ctx =>
             {
                 // Hashed build files never change; pages must always be fresh.

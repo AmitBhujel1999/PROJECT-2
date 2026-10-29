@@ -49,8 +49,9 @@ public static class DocumentPdf
     /// <summary>
     /// Sales invoice in the IRD tax invoice format (VAT Rules 2053, rule 17, schedule 5), or a purchase bill in the same layout.
     /// With <paramref name="printedBy"/>, a sales invoice print is recorded: the first is the original, later ones say "Copy of original (n)".
+    /// A <paramref name="preview"/> is never recorded and is marked "Preview", so it cannot pass for an issued invoice.
     /// </summary>
-    public static byte[] TradeDocument(Tx tx, TradeKind kind, long id, Actor? printedBy = null)
+    public static byte[] TradeDocument(Tx tx, TradeKind kind, long id, Actor? printedBy = null, bool preview = false)
     {
         var s = BusinessSettings.Get(tx);
         var doc = TradeService.Get(tx, kind, id);
@@ -60,9 +61,9 @@ public static class DocumentPdf
         if (sale)
         {
             var printed = tx.Scalar<long>("SELECT COUNT(*) FROM invoice_prints WHERE sale_id = @id", new { id });
-            if (printedBy is not null)
+            if (printedBy is not null && !preview)
                 tx.Execute("INSERT INTO invoice_prints (sale_id, printed_by) VALUES (@id, @userId)", new { id, userId = printedBy.UserId });
-            copyLabel = printed == 0 ? "ORIGINAL – FOR BUYER" : $"COPY OF ORIGINAL ({printed})";
+            copyLabel = preview ? "PREVIEW – NOT AN INVOICE" : printed == 0 ? "ORIGINAL – FOR BUYER" : $"COPY OF ORIGINAL ({printed})";
         }
         var title = sale ? "TAX INVOICE" : "PURCHASE BILL";
         var pdf = Pdf.NewDocument($"{title} {doc.Number}");
