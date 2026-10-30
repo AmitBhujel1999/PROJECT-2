@@ -38,6 +38,12 @@ public sealed record Product
     public decimal PurchasePrice { get; init; }
     public decimal SellingPrice { get; init; }
     public decimal TaxRate { get; init; }
+    /// <summary>Default discount for new sale lines: a percentage, or rupees off each unit (Fixed).</summary>
+    public DiscountType? SaleDiscountType { get; init; }
+    public decimal SaleDiscountValue { get; init; }
+    /// <summary>Default discount for new purchase lines, same meaning as the sale one.</summary>
+    public DiscountType? PurchaseDiscountType { get; init; }
+    public decimal PurchaseDiscountValue { get; init; }
     public bool IsActive { get; init; } = true;
     public DateTime CreatedAt { get; init; }
 
@@ -62,6 +68,10 @@ public sealed record ProductInput
     public decimal SellingPrice { get; init; }
     /// <summary>Defaults to the business default tax rate when null.</summary>
     public decimal? TaxRate { get; init; }
+    public DiscountType? SaleDiscountType { get; init; }
+    public decimal SaleDiscountValue { get; init; }
+    public DiscountType? PurchaseDiscountType { get; init; }
+    public decimal PurchaseDiscountValue { get; init; }
 
     public static ProductInput From(Product p) => new()
     {
@@ -76,5 +86,9 @@ public sealed record ProductInput
         PurchasePrice = p.PurchasePrice,
         SellingPrice = p.SellingPrice,
         TaxRate = p.TaxRate,
+        SaleDiscountType = p.SaleDiscountType,
+        SaleDiscountValue = p.SaleDiscountValue,
+        PurchaseDiscountType = p.PurchaseDiscountType,
+        PurchaseDiscountValue = p.PurchaseDiscountValue,
     };
 }

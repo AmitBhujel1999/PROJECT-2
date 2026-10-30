@@ -44,6 +44,33 @@ public class ProductPartyTests : IDisposable
     }
 
     [Fact]
+    public void ProductKeepsSeparateSaleAndPurchaseDiscounts()
+    {
+        var p = Create(Laptop with
+        {
+            SaleDiscountType = DiscountType.Percentage, SaleDiscountValue = 10,
+            PurchaseDiscountType = DiscountType.Fixed, PurchaseDiscountValue = 500,
+        });
+        Assert.Equal((DiscountType.Percentage, 10m), (p.SaleDiscountType, p.SaleDiscountValue));
+        Assert.Equal((DiscountType.Fixed, 500m), (p.PurchaseDiscountType, p.PurchaseDiscountValue));
+
+        // A zero value means no discount, so the type is dropped too.
+        var cleared = Update(p.Id, i => i with { SaleDiscountValue = 0 });
+        Assert.Null(cleared.SaleDiscountType);
+        Assert.Equal(DiscountType.Fixed, cleared.PurchaseDiscountType);
+    }
+
+    [Fact]
+    public void ProductDiscountOverHundredPercentRejected()
+    {
+        var ex = Assert.Throws<ValidationError>(() =>
+            Create(Laptop with { SaleDiscountType = DiscountType.Percentage, SaleDiscountValue = 101 }));
+        Assert.Equal("sale_discount_value", ex.Field);
+        Assert.Throws<ValidationError>(() =>
+            Create(Laptop with { PurchaseDiscountType = DiscountType.Fixed, PurchaseDiscountValue = -1 }));
+    }
+
+    [Fact]
     public void DuplicateSkuRejectedCaseInsensitive()
     {
         Create(Laptop);

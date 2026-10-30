@@ -18,7 +18,10 @@ public static class ProductsApi
         id = p.Id, name = p.Name, sku_code = p.SkuCode, unit = p.Unit.ToCode(), unit_display = p.Unit.Display(), description = p.Description, hs_code = p.HsCode,
         opening_stock = Json.Q(p.OpeningStock), opening_rate = Json.M(p.OpeningRate), opening_amount = Json.M(p.OpeningAmount),
         reorder_level = Json.Q(p.ReorderLevel), purchase_price = Json.M(p.PurchasePrice), selling_price = Json.M(p.SellingPrice),
-        tax_rate = Json.R(p.TaxRate), is_active = p.IsActive, current_stock = currentStock is { } s ? Json.Q(s) : null,
+        tax_rate = Json.R(p.TaxRate),
+        sale_discount_type = p.SaleDiscountType.ToCode(), sale_discount_value = Json.M(p.SaleDiscountValue),
+        purchase_discount_type = p.PurchaseDiscountType.ToCode(), purchase_discount_value = Json.M(p.PurchaseDiscountValue),
+        is_active = p.IsActive, current_stock = currentStock is { } s ? Json.Q(s) : null,
         created_at = Json.T(p.CreatedAt), updated_at = Json.T(p.CreatedAt),
     };
 
@@ -121,6 +124,9 @@ public static class ProductsApi
             var v = b.Has(field) ? b.Dec(field) ?? 0 : fallback;
             return v >= 0 ? v : throw new ValidationError(field, "Ensure this value is greater than or equal to 0.");
         }
+        DiscountType? DiscountType(string field) => b.Str(field) is var code && code is null or "" or "PERCENTAGE" or "FIXED"
+            ? DiscountTypes.Parse(code)
+            : throw new ValidationError(field, $"\"{code}\" is not a valid choice.");
         var unit = b.Str("unit") is { Length: > 0 } u
             ? Enum.TryParse<Unit>(u, ignoreCase: true, out var parsed) ? parsed : throw new ValidationError("unit", $"\"{u}\" is not a valid choice.")
             : current?.Unit ?? Unit.Pcs;
@@ -137,6 +143,10 @@ public static class ProductsApi
             PurchasePrice = NonNegative("purchase_price", current?.PurchasePrice ?? 0),
             SellingPrice = NonNegative("selling_price", current?.SellingPrice ?? 0),
             TaxRate = b.Has("tax_rate") ? b.Dec("tax_rate") : current?.TaxRate,
+            SaleDiscountType = b.Has("sale_discount_type") ? DiscountType("sale_discount_type") : current?.SaleDiscountType,
+            SaleDiscountValue = b.DecOr("sale_discount_value", current?.SaleDiscountValue ?? 0),
+            PurchaseDiscountType = b.Has("purchase_discount_type") ? DiscountType("purchase_discount_type") : current?.PurchaseDiscountType,
+            PurchaseDiscountValue = b.DecOr("purchase_discount_value", current?.PurchaseDiscountValue ?? 0),
         };
     }
 }

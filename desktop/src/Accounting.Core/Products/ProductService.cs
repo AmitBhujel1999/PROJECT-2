@@ -18,9 +18,11 @@ public static class ProductService
         var id = tx.Insert(
             """
             INSERT INTO products (name, sku_code, unit, description, hs_code, opening_stock, opening_rate, reorder_level,
-                                  purchase_price, selling_price, tax_rate)
+                                  purchase_price, selling_price, tax_rate, sale_discount_type, sale_discount_value,
+                                  purchase_discount_type, purchase_discount_value)
             VALUES (@Name, @SkuCode, @Unit, @Description, @HsCode, @OpeningStock, @OpeningRate, @ReorderLevel,
-                    @PurchasePrice, @SellingPrice, @TaxRate)
+                    @PurchasePrice, @SellingPrice, @TaxRate, @SaleDiscountType, @SaleDiscountValue,
+                    @PurchaseDiscountType, @PurchaseDiscountValue)
             """, data);
         var product = Get(tx, id);
         InventoryService.PostOpeningStock(tx, actor, product, openingDate ?? tx.Today);
@@ -42,12 +44,15 @@ public static class ProductService
             UPDATE products SET name = @Name, sku_code = @SkuCode, unit = @Unit, description = @Description, hs_code = @HsCode,
                 opening_stock = @OpeningStock, opening_rate = @OpeningRate, reorder_level = @ReorderLevel,
                 purchase_price = @PurchasePrice, selling_price = @SellingPrice, tax_rate = @TaxRate,
+                sale_discount_type = @SaleDiscountType, sale_discount_value = @SaleDiscountValue,
+                purchase_discount_type = @PurchaseDiscountType, purchase_discount_value = @PurchaseDiscountValue,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
             WHERE id = @id
             """, new
             {
                 id, data.Name, data.SkuCode, data.Unit, data.Description, data.HsCode, data.OpeningStock, data.OpeningRate,
                 data.ReorderLevel, data.PurchasePrice, data.SellingPrice, data.TaxRate,
+                data.SaleDiscountType, data.SaleDiscountValue, data.PurchaseDiscountType, data.PurchaseDiscountValue,
             });
         var after = Get(tx, id);
         AuditLog.Record(tx, actor, AuditAction.Update, Model, id, after.ToString(), AuditLog.Snapshot(before), AuditLog.Snapshot(after));
@@ -128,13 +133,18 @@ public static class ProductService
         PurchasePrice = r.Money("purchase_price"),
         SellingPrice = r.Money("selling_price"),
         TaxRate = r.Rate("tax_rate"),
+        SaleDiscountType = DiscountTypes.Parse(r.NullableStr("sale_discount_type")),
+        SaleDiscountValue = r.Money("sale_discount_value"),
+        PurchaseDiscountType = DiscountTypes.Parse(r.NullableStr("purchase_discount_type")),
+        PurchaseDiscountValue = r.Money("purchase_discount_value"),
         IsActive = r.Bool("is_active"),
         CreatedAt = r.Timestamp("created_at"),
     };
 
     private sealed record StoredProduct(
         string Name, string SkuCode, string Unit, string Description, string HsCode, long OpeningStock, long OpeningRate,
-        long ReorderLevel, long PurchasePrice, long SellingPrice, long TaxRate);
+        long ReorderLevel, long PurchasePrice, long SellingPrice, long TaxRate, string? SaleDiscountType, long SaleDiscountValue,
+        string? PurchaseDiscountType, long PurchaseDiscountValue);
 
     private static StoredProduct Normalise(Tx tx, ProductInput input, long? excludeId)
     {
@@ -155,9 +165,23 @@ public static class ProductService
         var taxRate = input.TaxRate ?? BusinessSettings.Get(tx).DefaultTaxRate;
         if (taxRate is < 0 or > 100)
             throw new ValidationError("tax_rate", "Tax rate must be between 0 and 100.");
+        var (saleType, saleValue) = DefaultDiscount("sale_discount_value", input.SaleDiscountType, input.SaleDiscountValue);
+        var (purchaseType, purchaseValue) = DefaultDiscount("purchase_discount_value", input.PurchaseDiscountType, input.PurchaseDiscountValue);
         return new StoredProduct(name, sku, input.Unit.ToCode(), input.Description.Trim(), input.HsCode.Trim(), Money.ToMilli(input.OpeningStock),
             Money.ToPaisa(openingRate), Money.ToMilli(input.ReorderLevel), Money.ToPaisa(input.PurchasePrice),
-            Money.ToPaisa(input.SellingPrice), Money.ToPaisa(Money.Rate(taxRate)));
+            Money.ToPaisa(input.SellingPrice), Money.ToPaisa(Money.Rate(taxRate)), saleType.ToCode(), Money.ToPaisa(saleValue),
+            purchaseType.ToCode(), Money.ToPaisa(purchaseValue));
+    }
+
+    /// <summary>A product's default discount; no type or a zero value both mean "no discount".</summary>
+    private static (DiscountType? Type, decimal Value) DefaultDiscount(string field, DiscountType? type, decimal value)
+    {
+        NotNegative(field, value);
+        if (type is null || value == 0)
+            return (null, 0m);
+        if (type == DiscountType.Percentage && value > Money.Hundred)
+            throw new ValidationError(field, "Discount percentage cannot exceed 100%.");
+        return (type, Money.Round(value));
     }
 
     /// <summary>Code for an item saved without one: ITEM-0001, ITEM-0002, ... (first free number).</summary>

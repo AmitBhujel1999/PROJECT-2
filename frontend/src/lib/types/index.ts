@@ -49,6 +49,10 @@ export interface Product {
 	purchase_price: Money;
 	selling_price: Money;
 	tax_rate: string;
+	sale_discount_type: 'PERCENTAGE' | 'FIXED' | null;
+	sale_discount_value: Money;
+	purchase_discount_type: 'PERCENTAGE' | 'FIXED' | null;
+	purchase_discount_value: Money;
 	is_active: boolean;
 	current_stock: Qty | null;
 	created_at: string;

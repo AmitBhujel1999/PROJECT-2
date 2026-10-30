@@ -402,6 +402,14 @@ internal static class Schema
         );
         CREATE INDEX invoice_prints_sale ON invoice_prints (sale_id);
         """,
+
+        // 8: default discount per item, filled into new sale / purchase lines (percent, or rupees off each unit)
+        """
+        ALTER TABLE products ADD COLUMN sale_discount_type TEXT CHECK (sale_discount_type IS NULL OR sale_discount_type IN ('PERCENTAGE', 'FIXED'));
+        ALTER TABLE products ADD COLUMN sale_discount_value INTEGER NOT NULL DEFAULT 0 CHECK (sale_discount_value >= 0);
+        ALTER TABLE products ADD COLUMN purchase_discount_type TEXT CHECK (purchase_discount_type IS NULL OR purchase_discount_type IN ('PERCENTAGE', 'FIXED'));
+        ALTER TABLE products ADD COLUMN purchase_discount_value INTEGER NOT NULL DEFAULT 0 CHECK (purchase_discount_value >= 0);
+        """,
     ];
 
     private const string Now = "(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))";

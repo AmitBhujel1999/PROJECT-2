@@ -110,6 +110,24 @@ public sealed class ServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ProductDiscountsRoundTrip()
+    {
+        await SetUp();
+        var created = (await Post("/api/products/", new
+        {
+            name = "Rice", sku_code = "R1", selling_price = "1200", sale_discount_type = "PERCENTAGE", sale_discount_value = "10",
+        }, HttpStatusCode.Created)).GetProperty("data");
+        Assert.Equal("PERCENTAGE", created.GetProperty("sale_discount_type").GetString());
+        Assert.Equal("10.00", created.GetProperty("sale_discount_value").GetString());
+        Assert.Equal(JsonValueKind.Null, created.GetProperty("purchase_discount_type").ValueKind);
+        Assert.Equal("0.00", created.GetProperty("purchase_discount_value").GetString());
+
+        var bad = await Post("/api/products/", new { name = "Tea", purchase_discount_type = "HALF", purchase_discount_value = "5" },
+            HttpStatusCode.BadRequest);
+        Assert.True(bad.GetProperty("error").GetProperty("details").TryGetProperty("purchase_discount_type", out _));
+    }
+
+    [Fact]
     public async Task ListsArePagedWithDecimalStrings()
     {
         await SetUp(demo: true);

@@ -29,8 +29,16 @@
 		reorder_level: '0',
 		purchase_price: '0',
 		selling_price: '0',
-		tax_rate: auth.settings?.default_tax_rate ?? '13.00'
+		tax_rate: auth.settings?.default_tax_rate ?? '13.00',
+		sale_discount_type: '' as '' | 'PERCENTAGE' | 'FIXED',
+		sale_discount_value: '0',
+		purchase_discount_type: '' as '' | 'PERCENTAGE' | 'FIXED',
+		purchase_discount_value: '0'
 	});
+	const discountOptions = $derived([
+		{ value: 'PERCENTAGE', label: 'Percentage (%)' },
+		{ value: 'FIXED', label: `${auth.currency} off each unit` }
+	]);
 	let form = $state(blank());
 	let errors = $state<Record<string, string>>({});
 	let busy = $state(false);
@@ -54,7 +62,11 @@
 						reorder_level: product.reorder_level,
 						purchase_price: product.purchase_price,
 						selling_price: product.selling_price,
-						tax_rate: product.tax_rate
+						tax_rate: product.tax_rate,
+						sale_discount_type: product.sale_discount_type ?? '',
+						sale_discount_value: product.sale_discount_value ?? '0',
+						purchase_discount_type: product.purchase_discount_type ?? '',
+						purchase_discount_value: product.purchase_discount_value ?? '0'
 					}
 				: blank();
 		}
@@ -65,7 +77,13 @@
 		busy = true;
 		errors = {};
 		try {
-			const body = { ...form } as Record<string, string>;
+			const body = { ...form } as Record<string, string | null>;
+			for (const side of ['sale', 'purchase']) {
+				if (!body[`${side}_discount_type`]) {
+					body[`${side}_discount_type`] = null;
+					body[`${side}_discount_value`] = '0';
+				}
+			}
 			const res = product ? await api.patch<Product>(`products/${product.id}/`, body) : await api.post<Product>('products/', body);
 			toast.success(res.message);
 			open = false;
@@ -105,6 +123,24 @@
 		<Field label="Reorder level" for="p-reorder" error={errors.reorder_level}>
 			<Input id="p-reorder" type="number" step="0.001" min="0" bind:value={form.reorder_level} class="text-right" />
 		</Field>
+		<div class="grid gap-3 rounded-lg border bg-muted/30 p-3 sm:col-span-2 sm:grid-cols-2">
+		<Field label="Sale discount" for="p-sdisc" error={errors.sale_discount_type ?? errors.sale_discount_value}
+			hint="Filled in on new sales; can be changed on the invoice.">
+			<div class="flex gap-2">
+				<Select id="p-sdisc" bind:value={form.sale_discount_type} options={discountOptions} placeholder="No discount" />
+				<Input type="number" step="0.01" min="0" bind:value={form.sale_discount_value} disabled={!form.sale_discount_type}
+					class="w-28 text-right" aria-label="Sale discount value" aria-invalid={!!errors.sale_discount_value} />
+			</div>
+		</Field>
+		<Field label="Purchase discount" for="p-pdisc" error={errors.purchase_discount_type ?? errors.purchase_discount_value}
+			hint="Filled in on new purchase bills; can be changed there.">
+			<div class="flex gap-2">
+				<Select id="p-pdisc" bind:value={form.purchase_discount_type} options={discountOptions} placeholder="No discount" />
+				<Input type="number" step="0.01" min="0" bind:value={form.purchase_discount_value} disabled={!form.purchase_discount_type}
+					class="w-28 text-right" aria-label="Purchase discount value" aria-invalid={!!errors.purchase_discount_value} />
+			</div>
+		</Field>
+		</div>
 		<div class="grid gap-3 rounded-lg border bg-muted/30 p-3 sm:col-span-2 sm:grid-cols-3">
 			<Field label="Opening stock (qty)" for="p-opening" error={errors.opening_stock}
 				hint={product ? 'Changing it adds a correction on the opening date.' : 'Posted to the stock ledger on save.'}>

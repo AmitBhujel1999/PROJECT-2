@@ -44,10 +44,12 @@
 		unit_price: string;
 		discount_type: '' | 'PERCENTAGE' | 'FIXED';
 		discount_value: string;
+		/** Rupees off each unit, from the product's Fixed default; the line discount follows the quantity until edited. */
+		per_unit_off: string;
 	}
 
 	let nextKey = 1;
-	const newRow = (): Row => ({ key: nextKey++, product: null, label: '', unit: '', stock: null, quantity: '1', unit_price: '', discount_type: '', discount_value: '' });
+	const newRow = (): Row => ({ key: nextKey++, product: null, label: '', unit: '', stock: null, quantity: '1', unit_price: '', discount_type: '', discount_value: '', per_unit_off: '' });
 
 	let partyId = $state<number | null>(null);
 	let partyLabel = $state('');
@@ -107,8 +109,41 @@
 			row.unit = p.unit_display;
 			row.stock = p.current_stock;
 			row.unit_price = isSale ? p.selling_price : p.purchase_price;
+			applyProductDiscount(row, p);
 			if (rows[rows.length - 1] === row) rows.push(newRow());
 		}
+		schedulePreview();
+	}
+
+	// The product's own default discount for this side (sale or purchase) fills the line; the user can change it.
+	function applyProductDiscount(row: Row, p: Product) {
+		const type = isSale ? p.sale_discount_type : p.purchase_discount_type;
+		const value = isSale ? p.sale_discount_value : p.purchase_discount_value;
+		row.per_unit_off = '';
+		if (!type || !Number(value)) {
+			row.discount_type = '';
+			row.discount_value = '';
+		} else if (type === 'PERCENTAGE') {
+			row.discount_type = 'PERCENTAGE';
+			row.discount_value = String(Number(value));
+		} else {
+			row.discount_type = 'FIXED';
+			row.per_unit_off = value;
+			followQuantity(row);
+		}
+	}
+
+	function followQuantity(row: Row) {
+		if (row.per_unit_off) row.discount_value = ((Number(row.per_unit_off) || 0) * (Number(row.quantity) || 0)).toFixed(2);
+	}
+
+	function onQuantity(row: Row) {
+		followQuantity(row);
+		schedulePreview();
+	}
+
+	function onDiscountEdit(row: Row) {
+		row.per_unit_off = '';
 		schedulePreview();
 	}
 
@@ -241,7 +276,7 @@
 	function step(row: Row, delta: number) {
 		const next = Math.max(1, Math.floor(Number(row.quantity) || 0) + delta);
 		row.quantity = String(next);
-		schedulePreview();
+		onQuantity(row);
 	}
 
 	const paidPreview = $derived(paymentStatus === 'PAID' ? totals?.total_amount : paymentStatus === 'PARTIAL' ? paidAmount : '0');
@@ -321,7 +356,7 @@
 										<p class="mb-1 text-[11px] text-muted-foreground">Qty {#if stock !== null}<span class:text-red-600={short}>· {fmtQty(stock)} {row.unit} in stock</span>{/if}</p>
 										<div class="flex h-9 overflow-hidden rounded-md border">
 											<button type="button" class="w-9 bg-muted font-bold" onclick={() => step(row, -1)} aria-label="Less">−</button>
-											<input type="number" min="0.001" step="any" bind:value={row.quantity} oninput={schedulePreview} class="w-full min-w-0 text-center text-sm font-semibold outline-none" aria-label="Quantity row {i + 1}" aria-invalid={!!short} />
+											<input type="number" min="0.001" step="any" bind:value={row.quantity} oninput={() => onQuantity(row)} class="w-full min-w-0 text-center text-sm font-semibold outline-none" aria-label="Quantity row {i + 1}" aria-invalid={!!short} />
 											<button type="button" class="w-9 bg-muted font-bold" onclick={() => step(row, 1)} aria-label="More">+</button>
 										</div>
 									</div>
@@ -330,11 +365,11 @@
 										<Input type="number" min="0" step="0.01" bind:value={row.unit_price} oninput={schedulePreview} class="h-9 text-right" aria-label="Price row {i + 1}" />
 									</div>
 									<div class="col-span-2 flex items-center gap-2">
-										<select class="h-9 w-24 rounded-md border bg-background px-1.5 text-sm" bind:value={row.discount_type} onchange={schedulePreview} aria-label="Discount type row {i + 1}">
+										<select class="h-9 w-24 rounded-md border bg-background px-1.5 text-sm" bind:value={row.discount_type} onchange={() => onDiscountEdit(row)} aria-label="Discount type row {i + 1}">
 											<option value="">No disc.</option><option value="PERCENTAGE">%</option><option value="FIXED">Fixed</option>
 										</select>
 										{#if row.discount_type}
-											<Input type="number" min="0" step="0.01" bind:value={row.discount_value} oninput={schedulePreview} class="h-9 w-24 text-right" aria-label="Discount value row {i + 1}" />
+											<Input type="number" min="0" step="0.01" bind:value={row.discount_value} oninput={() => onDiscountEdit(row)} class="h-9 w-24 text-right" aria-label="Discount value row {i + 1}" />
 										{/if}
 										<div class="ml-auto text-right">
 											<p class="font-semibold tabular-nums">{ln ? money(ln.net_amount) : '—'}</p>
@@ -393,15 +428,15 @@
 									{#if row.product}{fmtQty(stock)} <span class="text-xs text-muted-foreground">{row.unit}</span>{/if}
 								</td>
 								<td>
-									<Input type="number" min="0.001" step="any" bind:value={row.quantity} oninput={schedulePreview} class="h-8 w-24 text-right" aria-label="Quantity row {i + 1}" aria-invalid={!!short} />
+									<Input type="number" min="0.001" step="any" bind:value={row.quantity} oninput={() => onQuantity(row)} class="h-8 w-24 text-right" aria-label="Quantity row {i + 1}" aria-invalid={!!short} />
 								</td>
 								<td><Input type="number" min="0" step="0.01" bind:value={row.unit_price} oninput={schedulePreview} class="h-8 w-32 text-right" aria-label="Price row {i + 1}" /></td>
 								<td>
-									<select class="h-8 w-24 rounded-md border bg-background px-1.5 text-sm" bind:value={row.discount_type} onchange={schedulePreview} aria-label="Discount type row {i + 1}">
+									<select class="h-8 w-24 rounded-md border bg-background px-1.5 text-sm" bind:value={row.discount_type} onchange={() => onDiscountEdit(row)} aria-label="Discount type row {i + 1}">
 										<option value="">None</option><option value="PERCENTAGE">%</option><option value="FIXED">Fixed</option>
 									</select>
 								</td>
-								<td><Input type="number" min="0" step="0.01" bind:value={row.discount_value} oninput={schedulePreview} disabled={!row.discount_type} class="h-8 w-24 text-right" aria-label="Discount value row {i + 1}" /></td>
+								<td><Input type="number" min="0" step="0.01" bind:value={row.discount_value} oninput={() => onDiscountEdit(row)} disabled={!row.discount_type} class="h-8 w-24 text-right" aria-label="Discount value row {i + 1}" /></td>
 								<td class="num text-muted-foreground">{ln?.tax_rate ?? ''}</td>
 								<td class="num font-medium">
 									{#if ln}

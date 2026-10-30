@@ -5,7 +5,7 @@
 	import { api } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { ListState } from '$lib/stores/list.svelte';
-	import { money, qty, date as fmtDate, today } from '$lib/utilities/format';
+	import { money, qty, discountText, date as fmtDate, today } from '$lib/utilities/format';
 	import type { Product, StockLedgerRow } from '$lib/types';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import Card from '$lib/components/ui/card.svelte';
@@ -50,6 +50,8 @@
 				<dt class="text-muted-foreground">Purchase price</dt><dd class="num">{money(p.purchase_price)}</dd>
 				<dt class="text-muted-foreground">Selling price</dt><dd class="num">{money(p.selling_price)}</dd>
 				<dt class="text-muted-foreground">Tax rate</dt><dd class="num">{p.tax_rate}%</dd>
+				<dt class="text-muted-foreground">Sale discount</dt><dd class="num">{discountText(p.sale_discount_type, p.sale_discount_value)}</dd>
+				<dt class="text-muted-foreground">Purchase discount</dt><dd class="num">{discountText(p.purchase_discount_type, p.purchase_discount_value)}</dd>
 			</dl>
 		</Card>
 		<Card title="Stock">

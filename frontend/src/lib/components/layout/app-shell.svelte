@@ -201,8 +201,8 @@
 					</div>
 				{/if}
 			</div>
-			<p class="status-line no-print">{auth.settings?.business_name ?? 'Mero Lekhapal'} (F.Y. {fiscalYear})</p>
 		</main>
+		<footer class="status-line no-print">{auth.settings?.business_name ?? 'Mero Lekhapal'} (F.Y. {fiscalYear})</footer>
 	</div>
 {/if}
 

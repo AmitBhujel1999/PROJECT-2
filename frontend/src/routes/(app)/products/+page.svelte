@@ -4,7 +4,7 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import { toast } from '$lib/stores/toast.svelte';
 	import { ListState } from '$lib/stores/list.svelte';
-	import { money, qty, UNITS } from '$lib/utilities/format';
+	import { money, qty, discountText, UNITS } from '$lib/utilities/format';
 	import type { Product } from '$lib/types';
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import Button from '$lib/components/ui/button.svelte';
@@ -85,12 +85,12 @@
 		<table class="table-base" data-testid="products-table">
 			<thead>
 				<tr>
-					<th>SKU</th><th>Name</th><th>Unit</th><th class="num">Stock</th><th class="num">Purchase</th><th class="num">Selling</th><th class="num">Tax %</th><th>Status</th>
+					<th>SKU</th><th>Name</th><th>Unit</th><th class="num">Stock</th><th class="num">Purchase</th><th class="num">Selling</th><th class="num">Sale disc.</th><th class="num">Tax %</th><th>Status</th>
 					{#if canManage}<th class="text-right">Actions</th>{/if}
 				</tr>
 			</thead>
 			<tbody>
-				<TableState loading={list.loading} error={list.error} empty={!list.items.length} colspan={9} onRetry={() => list.load()} />
+				<TableState loading={list.loading} error={list.error} empty={!list.items.length} colspan={10} onRetry={() => list.load()} />
 				{#each list.items as p (p.id)}
 					<tr>
 						<td class="whitespace-nowrap font-mono text-xs">{p.sku_code}</td>
@@ -99,6 +99,7 @@
 						<td class="num" class:text-red-600={Number(p.current_stock) <= Number(p.reorder_level)}>{qty(p.current_stock)}</td>
 						<td class="num">{money(p.purchase_price)}</td>
 						<td class="num">{money(p.selling_price)}</td>
+						<td class="num">{discountText(p.sale_discount_type, p.sale_discount_value)}</td>
 						<td class="num">{p.tax_rate}</td>
 						<td><StatusBadge status={p.is_active ? 'ACTIVE' : 'INACTIVE'} /></td>
 						{#if canManage}

@@ -10,6 +10,12 @@ const moneyFmt = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maxi
 const qtyFmt = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 3 });
 
 /** Format a decimal string with lakh/crore grouping (Nepal convention) without float drift. */
+/** A product's default discount for display: "10%", "50.00 off each" or "-". */
+export function discountText(type: string | null | undefined, value: string | number | null | undefined): string {
+	if (!type || !Number(value)) return '-';
+	return type === 'PERCENTAGE' ? `${Number(value)}%` : `${money(value)} off each`;
+}
+
 export function money(value: string | number | null | undefined, blankZero = false): string {
 	if (value === null || value === undefined || value === '') return '';
 	const str = String(value);
