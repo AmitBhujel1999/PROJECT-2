@@ -188,7 +188,7 @@
 		</header>
 		<CloudBanner />
 
-		<main class="workspace print-full flex-1 px-3 pb-14 pt-3 sm:px-5 sm:pt-5">
+		<main class="workspace print-full flex-1 px-3 pb-20 pt-3 sm:px-5 sm:pt-5">
 			<div class="relative z-[1] mx-auto w-full max-w-[1600px]">
 				{#if bare}
 					{@render children()}
@@ -202,7 +202,13 @@
 				{/if}
 			</div>
 		</main>
-		<footer class="status-line no-print">{auth.settings?.business_name ?? 'Mero Lekhapal'} (F.Y. {fiscalYear})</footer>
+		<footer class="status-line no-print">
+			<p>
+				{auth.settings?.business_name ?? 'Mero Lekhapal'}{#if auth.settings?.pan_vat_no}{` (PAN ${auth.settings.pan_vat_no})`}{/if}
+				<span class="font-normal">· F.Y. {fiscalYear}</span>
+			</p>
+			{#if auth.settings?.address}<p class="text-xs font-normal">{auth.settings.address}</p>{/if}
+		</footer>
 	</div>
 {/if}
 
