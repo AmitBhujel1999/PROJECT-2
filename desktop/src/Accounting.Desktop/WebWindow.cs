@@ -35,10 +35,17 @@ public sealed class WebWindow : Window
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
         }
         _ready = Setup(start);
-        Closing += (_, _) =>
+        Closing += (_, e) =>
         {
-            if (_isMain)
-                SavePlacement();
+            if (!_isMain)
+                return;
+            if (MessageBox.Show(this, "Quit Mero Lekhapal?\n\nYou will need to sign in again next time.", "Mero Lekhapal",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
+            {
+                e.Cancel = true;
+                return;
+            }
+            SavePlacement();
         };
     }
 
@@ -70,6 +77,9 @@ public sealed class WebWindow : Window
         Core.WindowCloseRequested += (_, _) => Close();
         if (start is not null)
         {
+            // Sign in again every time the program starts: forget the last sign-in. Done on start
+            // rather than on close so it also happens after a crash or power cut.
+            Core.CookieManager.DeleteCookies(Accounting.Server.ApiServer.SessionCookie, start.AbsoluteUri);
 #if DEBUG
             // ACCOUNTING_AUTOLOGIN=user:password signs in on start, for checking screens without typing (debug builds only).
             if (Environment.GetEnvironmentVariable("ACCOUNTING_AUTOLOGIN")?.Split(':', 2) is [var user, var password])
