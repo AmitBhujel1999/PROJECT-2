@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
@@ -20,6 +20,9 @@ public sealed class Database
     public Func<DateOnly> Today { get; set; } = () => DateOnly.FromDateTime(DateTime.Now);
 
     public string Path { get; }
+
+    /// <summary>The newest file layout this program knows (PRAGMA user_version after all migrations).</summary>
+    public static int SchemaVersion => Schema.Migrations.Length;
 
     private Database(string path)
     {

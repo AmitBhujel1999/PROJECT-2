@@ -79,7 +79,8 @@ export const MENUS: TopMenu[] = [
 				]
 			},
 			{ label: 'Audit Log', href: '/settings/audit', perm: 'audit.view' },
-			{ label: 'Phone Anywhere', href: '/settings/cloud', perm: 'users.manage' }
+			{ label: 'Phone Anywhere', href: '/settings/cloud', perm: 'users.manage' },
+			{ label: 'Backups', href: '/settings/backup', perm: 'users.manage' }
 		]
 	},
 	{

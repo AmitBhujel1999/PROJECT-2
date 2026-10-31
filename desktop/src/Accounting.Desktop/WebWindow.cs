@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Media;
@@ -39,7 +39,7 @@ public sealed class WebWindow : Window
         {
             if (!_isMain)
                 return;
-            if (MessageBox.Show(this, "Quit Mero Lekhapal?\n\nYou will need to sign in again next time.", "Mero Lekhapal",
+            if (!App.Restarting && MessageBox.Show(this, "Quit Mero Lekhapal?\n\nYou will need to sign in again next time.", "Mero Lekhapal",
                     MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
             {
                 e.Cancel = true;

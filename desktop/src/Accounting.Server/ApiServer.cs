@@ -20,7 +20,10 @@ namespace Accounting.Server;
 /// <param name="Urls">Where to listen, e.g. "http://0.0.0.0:4173" for the phone on the same Wi-Fi.</param>
 /// <param name="Today">Business date override (tests).</param>
 /// <param name="Cloud">Firebase project for the online copy for phones; null switches the feature off.</param>
-public sealed record ServerOptions(string MainCompanyFile, string? WebRoot, string[] Urls, Func<DateOnly>? Today = null, CloudConfig? Cloud = null);
+/// <param name="PickFolder">Shows a folder chooser on this computer (starting at the given folder) and returns the choice; null when there is no window.</param>
+/// <param name="Restart">Closes and starts the program again (to finish a restore); null when the program cannot do that itself.</param>
+public sealed record ServerOptions(string MainCompanyFile, string? WebRoot, string[] Urls, Func<DateOnly>? Today = null, CloudConfig? Cloud = null,
+    Func<string?, string?>? PickFolder = null, Action? Restart = null);
 
 /// <summary>Marks an endpoint that works without signing in (login, CSRF cookie, company list, health).</summary>
 public sealed class AnonymousApi;
@@ -54,10 +57,17 @@ public static class ApiServer
             cloud = new CloudSync(companies, new Firebase(new HttpClient { Timeout = TimeSpan.FromSeconds(60) }, config), () => SelfUrl(built!));
             builder.Services.AddHostedService(_ => cloud);
         }
+        var backups = new Backups(companies);
+        builder.Services.AddHostedService(_ => backups);
         var app = built = builder.Build();
         app.Use(ErrorsAsEnvelope);
         app.UseRouting();
-        app.Use((context, next) => Authenticate(context, next, companies, cloud));
+        app.Use((context, next) =>
+        {
+            context.Items[nameof(Backups)] = backups;
+            context.Items[nameof(ServerOptions)] = options;
+            return Authenticate(context, next, companies, cloud);
+        });
         var api = app.MapGroup("/api");
         Map(api);
 
@@ -78,6 +88,11 @@ public static class ApiServer
     /// <summary>The online-copy sync of the server handling this request, or null when it is off.</summary>
     public static CloudSync? Cloud(HttpContext context) => context.Items[nameof(CloudSync)] as CloudSync;
 
+    /// <summary>The backups of the server handling this request.</summary>
+    public static Backups Backups(HttpContext context) => (Backups)context.Items[nameof(Server.Backups)]!;
+
+    public static ServerOptions Options(HttpContext context) => (ServerOptions)context.Items[nameof(ServerOptions)]!;
+
     /// <summary>The companies of the server handling this request.</summary>
     public static CompanyRegistry Companies(HttpContext context) => (CompanyRegistry)context.Items[nameof(CompanyRegistry)]!;
 
@@ -87,6 +102,7 @@ public static class ApiServer
         AuthApi.Map(api);
         AdminApi.Map(api);
         CloudApi.Map(api);
+        BackupApi.Map(api);
         ProductsApi.Map(api);
         PartiesApi.Map(api);
         BulkApi.Map(api);

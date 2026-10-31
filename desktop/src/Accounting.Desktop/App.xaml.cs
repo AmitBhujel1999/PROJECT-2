@@ -22,6 +22,10 @@ public partial class App : Application
     private WebApplication? _server;
     private Mutex? _single;
     private EventWaitHandle? _showSignal;
+    private string[] _args = [];
+
+    /// <summary>True while closing to start again (after a restore): no "Quit?" question.</summary>
+    public static bool Restarting { get; private set; }
 
     /// <summary>Where the window loads the screens from.</summary>
     public static Uri Home { get; private set; } = null!;
@@ -45,6 +49,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        _args = e.Args;
         var file = Path.GetFullPath(Arg(e.Args, "--file") ?? Path.Combine(DataFolder, "company.db"));
         var port = int.TryParse(Arg(e.Args, "--port"), out var p) ? p : DefaultPort;
         var localOnly = e.Args.Contains("--local-only");
@@ -59,7 +64,7 @@ public partial class App : Application
         try
         {
             _server = ApiServer.Build(new ServerOptions(file, web, [$"http://{(localOnly ? "127.0.0.1" : "0.0.0.0")}:{port}"],
-                Cloud: Accounting.Server.Cloud.CloudConfig.MeroLekhapal));
+                Cloud: Accounting.Server.Cloud.CloudConfig.MeroLekhapal, PickFolder: PickFolder, Restart: Restart));
             await _server.StartAsync();
         }
         catch (IOException ex) when (ex.InnerException is SocketException or null)
@@ -101,7 +106,8 @@ public partial class App : Application
     {
         try
         {
-            _server?.StopAsync().Wait(TimeSpan.FromSeconds(3));
+            // Long enough for the closing backup to a slow drive.
+            _server?.StopAsync().Wait(TimeSpan.FromSeconds(20));
         }
         catch (AggregateException)
         {
@@ -109,8 +115,30 @@ public partial class App : Application
         }
         _showSignal?.Dispose();
         _single?.Dispose();
+        if (Restarting && Environment.ProcessPath is { } exe)
+        {
+            var start = new ProcessStartInfo(exe) { UseShellExecute = false };
+            foreach (var arg in _args)
+                start.ArgumentList.Add(arg);
+            Process.Start(start);
+        }
         base.OnExit(e);
     }
+
+    /// <summary>Windows' folder chooser, on the window's thread (the server asks from its own).</summary>
+    private string? PickFolder(string? current) => Dispatcher.Invoke(() =>
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Choose where to keep the backups" };
+        if (current is not null && Directory.Exists(current))
+            dialog.InitialDirectory = current;
+        return dialog.ShowDialog(MainWindow) == true ? dialog.FolderName : null;
+    });
+
+    private void Restart() => Dispatcher.BeginInvoke(() =>
+    {
+        Restarting = true;
+        Shutdown();
+    });
 
     /// <summary>
     /// True when this is the only program open on the file. Otherwise it asks the open one to show

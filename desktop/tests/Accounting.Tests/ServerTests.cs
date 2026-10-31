@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Accounting.Server;
@@ -259,5 +259,41 @@ public sealed class ServerTests : IAsyncLifetime
         using var pdf = await _http.GetAsync($"/api/sales/{sale.GetProperty("id").GetInt64()}/pdf/?inline=1");
         Assert.Equal("application/pdf", pdf.Content.Headers.ContentType?.MediaType);
         Assert.StartsWith("%PDF", System.Text.Encoding.ASCII.GetString((await pdf.Content.ReadAsByteArrayAsync())[..4]));
+    }
+
+    [Fact]
+    public async Task BackupThenRestoreAfterRestart()
+    {
+        await SetUp();
+        var drive = Path.Combine(_folder, "drive");
+        Directory.CreateDirectory(drive);
+        var bad = await Post("/api/backup/folder/", new { folder = Path.Combine(_folder, "missing") }, HttpStatusCode.BadRequest);
+        Assert.Equal("VALIDATION_ERROR", bad.GetProperty("error").GetProperty("code").GetString());
+
+        await Post("/api/products/", new { name = "Rice", sku_code = "R1", selling_price = "100" }, HttpStatusCode.Created);
+        var status = (await Post("/api/backup/folder/", new { folder = drive })).GetProperty("data");
+        var file = Assert.Single(status.GetProperty("files").EnumerateArray());
+        var name = file.GetProperty("name").GetString()!;
+        Assert.Matches(@"^MeroLekhapal-main-\d{4}-\d{2}-\d{2}\.db$", name);
+        Assert.True(File.Exists(Path.Combine(drive, Backups.SubFolder, name)));
+
+        // A change after the backup, then a restore: the change is gone after the next start.
+        await Post("/api/products/", new { name = "Dal", sku_code = "D1", selling_price = "150" }, HttpStatusCode.Created);
+        var missing = await Post("/api/backup/restore/", new { name = "../company.db" }, HttpStatusCode.NotFound);
+        Assert.Equal("NOT_FOUND", missing.GetProperty("error").GetProperty("code").GetString());
+        var restored = (await Post("/api/backup/restore/", new { name })).GetProperty("data");
+        Assert.True(restored.GetProperty("restore_pending").GetBoolean());
+        Assert.Contains(restored.GetProperty("files").EnumerateArray(), f => f.GetProperty("before_restore").GetBoolean());
+
+        await _app.StopAsync();
+        await _app.DisposeAsync();
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools(); // as when the program closes
+        _app = ApiServer.Build(new ServerOptions(Path.Combine(_folder, "company.db"), null, [_http.BaseAddress!.ToString().TrimEnd('/')]));
+        await _app.StartAsync();
+        await Post("/api/auth/login/", new { username = "admin", password = "Admin@12345" });
+        var products = (await Get("/api/products/")).ToString();
+        Assert.Contains("Rice", products);
+        Assert.DoesNotContain("Dal", products);
+        Assert.False((await Get("/api/backup/")).GetProperty("data").GetProperty("restore_pending").GetBoolean());
     }
 }

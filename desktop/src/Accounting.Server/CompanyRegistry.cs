@@ -31,6 +31,7 @@ public sealed partial class CompanyRegistry(string mainFile, Func<DateOnly>? tod
             return null;
         return _open.GetOrAdd(slug, s =>
         {
+            Backups.ApplyPendingRestore(FileFor(s));
             var db = Database.Open(FileFor(s));
             if (today is not null)
                 db.Today = today;
