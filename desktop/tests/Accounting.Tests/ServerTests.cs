@@ -208,6 +208,41 @@ public sealed class ServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ItemsExcelCarriesDiscountColumns()
+    {
+        await SetUp();
+        using var template = await _http.GetAsync("/api/products/bulk/template/");
+        using var book = new XLWorkbook(await template.Content.ReadAsStreamAsync());
+        var sheet = book.Worksheet("Items");
+        var headings = sheet.Row(1).CellsUsed().Select(c => c.GetString()).ToList();
+        var sale = headings.IndexOf("Sale discount") + 1;
+        var purchase = headings.IndexOf("Purchase discount") + 1;
+        Assert.True(sale > 0 && purchase > 0);
+        Assert.Equal("Sale discount value", sheet.Cell(1, sale + 1).GetString());
+        sheet.Cell(4, 1).Value = "Sugar 1kg";
+        sheet.Cell(4, sale).Value = "Percent";
+        sheet.Cell(4, sale + 1).Value = 5;
+        sheet.Cell(4, purchase).Value = "Per unit";
+        sheet.Cell(4, purchase + 1).Value = 2.5;
+
+        using var buffer = new MemoryStream();
+        book.SaveAs(buffer);
+        var form = new MultipartFormDataContent { { new ByteArrayContent(buffer.ToArray()), "file", "items.xlsx" } };
+        var row = Assert.Single((await Post("/api/products/bulk/upload/", form)).GetProperty("data").GetProperty("rows").EnumerateArray());
+        Assert.Equal("Percent", row.GetProperty("sale_discount_type").GetString());
+        Assert.Equal("2.5", row.GetProperty("purchase_discount_value").GetString());
+
+        // The grid turns the labels into codes before saving.
+        await Post("/api/products/bulk/", new
+        {
+            rows = new object[] { new { name = "Sugar 1kg", sale_discount_type = "PERCENTAGE", sale_discount_value = "5", purchase_discount_type = "FIXED", purchase_discount_value = "2.5" } },
+        });
+        var saved = (await Get("/api/products/?search=Sugar")).GetProperty("data").GetProperty("results")[0];
+        Assert.Equal("PERCENTAGE", saved.GetProperty("sale_discount_type").GetString());
+        Assert.Equal("2.50", saved.GetProperty("purchase_discount_value").GetString());
+    }
+
+    [Fact]
     public async Task SaleCalculatesVatAndServesPdf()
     {
         await SetUp();

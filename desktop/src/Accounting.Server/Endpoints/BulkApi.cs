@@ -29,6 +29,8 @@ public static class BulkApi
     private sealed record SheetFormat(string Title, SheetColumn[] Columns, object[][] Examples, string MatchNote);
 
     private static readonly string[] YesNo = ["Yes", "No"];
+    /// <summary>Same labels as the bulk grid's discount dropdown, so an uploaded sheet maps straight onto it.</summary>
+    private static readonly string[] DiscountChoices = ["None", "Percent", "Per unit"];
 
     private static SheetFormat ProductsFormat() => new("Items",
     [
@@ -41,11 +43,19 @@ public static class BulkApi
         new("selling_price", "Selling price", "Price you sell at, without VAT.", Width: 14, Aliases: ["sale price", "price", "rate"]),
         new("tax_rate", "VAT %", "13 for VAT items, 0 for non-VAT items.", Width: 8, Aliases: ["vat", "tax", "tax %", "tax rate"]),
         new("reorder_level", "Low stock alert", "Warn when stock falls to this quantity.", Width: 16, Aliases: ["reorder level", "reorder"]),
+        new("sale_discount_type", "Sale discount", "Discount filled in on new sales. Percent, or Per unit (rupees off each unit). Leave empty for None.",
+            Choices: DiscountChoices, Width: 14, Aliases: ["sale discount type", "discount"]),
+        new("sale_discount_value", "Sale discount value", "The percent, or the rupees off each unit.", Width: 14,
+            Aliases: ["sale disc", "sale disc value", "discount value"]),
+        new("purchase_discount_type", "Purchase discount", "Discount filled in on new purchase bills. Same choices as the sale discount.",
+            Choices: DiscountChoices, Width: 14, Aliases: ["purchase discount type", "buying discount"]),
+        new("purchase_discount_value", "Purchase discount value", "The percent, or the rupees off each unit.", Width: 14,
+            Aliases: ["purchase disc", "purchase disc value", "buying discount value"]),
         new("is_active", "In use", "Yes or No. Leave empty for Yes.", Choices: YesNo, Width: 8, Aliases: ["active"]),
     ],
     [
-        ["Basmati Rice 25kg", "RICE-25", "1006.30", "Kg", 1800, 2100, 13, 10, "Yes"],
-        ["Sunflower Oil 1L", "OIL-1L", "1512.11", "Ltr", 260, 330, 13, 40, "Yes"],
+        ["Basmati Rice 25kg", "RICE-25", "1006.30", "Kg", 1800, 2100, 13, 10, "Percent", 5, "None", 0, "Yes"],
+        ["Sunflower Oil 1L", "OIL-1L", "1512.11", "Ltr", 260, 330, 13, 40, "None", 0, "Per unit", 10, "Yes"],
     ],
     "If an item code is already in the app, that item is changed. Otherwise a new item is added.");
 

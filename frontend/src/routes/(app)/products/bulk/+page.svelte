@@ -3,6 +3,13 @@
 	import PageHeader from '$lib/components/ui/page-header.svelte';
 	import BulkGrid, { type BulkColumn } from '$lib/components/bulk/bulk-grid.svelte';
 
+	// Labels match the Excel format's choices (BulkApi.DiscountChoices). Per unit = rupees off each unit.
+	const DISCOUNTS = [
+		{ value: '', label: 'None' },
+		{ value: 'PERCENTAGE', label: 'Percent' },
+		{ value: 'FIXED', label: 'Per unit' }
+	];
+
 	const columns: BulkColumn[] = [
 		{ key: 'name', label: 'Item name', required: true, width: 'min-w-56' },
 		{ key: 'sku_code', label: 'Item code', width: 'w-32' },
@@ -11,7 +18,11 @@
 		{ key: 'purchase_price', label: 'Buying price', kind: 'number', width: 'w-28' },
 		{ key: 'selling_price', label: 'Selling price', kind: 'number', width: 'w-28' },
 		{ key: 'tax_rate', label: 'VAT %', kind: 'number', width: 'w-20' },
-		{ key: 'reorder_level', label: 'Low stock alert', kind: 'number', width: 'w-24' }
+		{ key: 'reorder_level', label: 'Low stock alert', kind: 'number', width: 'w-24' },
+		{ key: 'sale_discount_type', label: 'Sale discount', kind: 'select', options: DISCOUNTS, width: 'w-28' },
+		{ key: 'sale_discount_value', label: 'Sale discount value', kind: 'number', width: 'w-24' },
+		{ key: 'purchase_discount_type', label: 'Purchase discount', kind: 'select', options: DISCOUNTS, width: 'w-28' },
+		{ key: 'purchase_discount_value', label: 'Purchase discount value', kind: 'number', width: 'w-24' }
 	];
 </script>
 
